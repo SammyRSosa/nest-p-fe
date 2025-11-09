@@ -14,6 +14,9 @@ export default function HomePage() {
     if (isAuthenticated) {
       router.replace("/dashboard"); // ✅ replace avoids extra navigation history
     }
+    else{
+      router.replace("/login");
+    }
 
   }, [isAuthenticated, isLoading, router])
 
