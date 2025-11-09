@@ -1,4 +1,5 @@
 import type { AuthResponse, LoginCredentials } from "@/types"
+import { register } from "module"
 
 // Normalize base URL (avoid double slashes)
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000")
@@ -56,6 +57,12 @@ export const api = {
       localStorage.removeItem("token")
       localStorage.removeItem("role")
       localStorage.removeItem("user")
+    },
+    register: async (data: { account: string; password: string;}) => {
+      return fetchWithAuth("/auth/register", {
+        method: "POST",
+        body: JSON.stringify(data),
+      })
     },
   },
 
@@ -120,4 +127,19 @@ export const api = {
         body: JSON.stringify(data),
       }),
   },
+
+
+  // ---------------- USERS -----------------------
+  users: {
+    getAll: async () => fetchWithAuth("/users"),
+    getById: async (id: string) => fetchWithAuth(`/users/${id}`),
+    update: async (id: string, data: any) =>
+      fetchWithAuth(`/users/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    delete: async (id: string) =>
+      fetchWithAuth(`/users/${id}`, { method: "DELETE" }),
+  },
+
 }

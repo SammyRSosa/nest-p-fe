@@ -70,11 +70,21 @@ export function useAuth() {
       localStorage.setItem("user", JSON.stringify(userObj))
       setUser(userObj)
 
- 
+
       router.push("/") // redirect directly to dashboard
     } catch (err: any) {
       console.error("Login error:", err)
       throw new Error(err.message || "Error al iniciar sesión")
+    }
+  }, [router])
+
+  const register = useCallback(async (data: { account: string; password: string;}) => {
+    try {
+    const res = await api.auth.register(data)
+    router.push("/login")
+    }catch (err: any) {
+      console.log("Registration error:", err)
+      throw new Error(err.message || "Error al registrar usuario")
     }
   }, [router])
 
@@ -93,5 +103,6 @@ export function useAuth() {
     isLoading,
     login,
     logout,
+    register,
   }
 }

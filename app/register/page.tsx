@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
@@ -12,22 +11,36 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from "lucide-react"
 import Link from "next/link"
 
-export default function LoginPage() {
-  const [account, setaccount] = useState("")
+export default function RegisterPage() {
+  const [account, setAccount] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [name, setName] = useState("")
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const { login } = useAuth()
+  const { register } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setSuccess("")
     setIsLoading(true)
 
+    if (password !== confirmPassword) {
+      setError("Las contraseñas no coinciden")
+      setIsLoading(false)
+      return
+    }
+
     try {
-      await login(account, password)
+      await register({ account, password })
+      setSuccess("Usuario registrado exitosamente")
+      setAccount("")
+      setPassword("")
+      setConfirmPassword("")
     } catch (err: any) {
-      setError(err.message || "Credenciales inválidas")
+      setError(err.message || "Error al registrar usuario")
     } finally {
       setIsLoading(false)
     }
@@ -37,8 +50,10 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-secondary/30 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Sistema de Policlínico</CardTitle>
-          <CardDescription className="text-center">Ingrese sus credenciales para acceder</CardDescription>
+          <CardTitle className="text-2xl font-bold text-center">Registro de Usuario</CardTitle>
+          <CardDescription className="text-center">
+            Complete los campos para crear una nueva cuenta
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -49,7 +64,7 @@ export default function LoginPage() {
                 type="text"
                 placeholder="Ingrese su usuario"
                 value={account}
-                onChange={(e) => setaccount(e.target.value)}
+                onChange={(e) => setAccount(e.target.value)}
                 required
                 disabled={isLoading}
               />
@@ -66,6 +81,18 @@ export default function LoginPage() {
                 disabled={isLoading}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Confirme su contraseña"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                disabled={isLoading}
+              />
+            </div>
 
             {error && (
               <Alert variant="destructive">
@@ -73,27 +100,33 @@ export default function LoginPage() {
               </Alert>
             )}
 
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isLoading}>
+            {success && (
+              <Alert variant="default" className="border-green-500 text-green-700">
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            )}
+
+            <Button
+              type="submit"
+              className="w-full bg-accent hover:bg-accent/90"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Iniciando sesión...
+                  Registrando...
                 </>
               ) : (
-                "Iniciar Sesión"
+                "Registrar Usuario"
               )}
             </Button>
           </form>
-
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            ¿No tienes una cuenta?{" "}
-            <Link
-              href="/register"
+          <Link
+              href="/login"
               className="text-accent hover:underline hover:text-accent/90 transition-colors"
             >
-              Regístrate aquí
+              Si tienes cuenta
             </Link>
-          </div>
         </CardContent>
       </Card>
     </div>
