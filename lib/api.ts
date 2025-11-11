@@ -58,7 +58,7 @@ export const api = {
       localStorage.removeItem("role")
       localStorage.removeItem("user")
     },
-    register: async (data: { account: string; password: string;}) => {
+    register: async (data: { account: string; password: string; }) => {
       return fetchWithAuth("/auth/register", {
         method: "POST",
         body: JSON.stringify(data),
@@ -142,4 +142,39 @@ export const api = {
       fetchWithAuth(`/users/${id}`, { method: "DELETE" }),
   },
 
+  // ---------------- CONSULTATIONS -----------------------
+  consultations: {
+    getAll: async () => fetchWithAuth("/consultations"),
+    getById: async (id: string) => fetchWithAuth(`/consultations/${id}`),
+    create: async (data: any) =>
+      fetchWithAuth("/consultations", { method: "POST", body: JSON.stringify(data) }),
+    update: async (id: string, data: any) =>
+      fetchWithAuth(`/consultations/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    delete: async (id: string) =>
+      fetchWithAuth(`/consultations/${id}`, { method: "DELETE" }),
+    updateStatus: async (id: string, status: "pending" | "closed" | "canceled") =>
+      fetchWithAuth(`/consultations/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      }),
+  },
+
+  // ---------- REMISSIONS ----------
+  remissions: {
+    getAll: async () => fetchWithAuth("/remissions"),
+
+    getById: async (id: string) => fetchWithAuth(`/remissions/${id}`),
+
+    create: async (data: any) =>
+      fetchWithAuth("/remissions", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    createConsultation: async (remissionId: string, data: any) =>
+      fetchWithAuth(`/remissions/${remissionId}/consultations`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  },
 }
