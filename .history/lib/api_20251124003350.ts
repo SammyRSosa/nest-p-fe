@@ -145,7 +145,7 @@ workerDepartments: {
       body: JSON.stringify(data),
     }),
   getAll: async () => fetchWithAuth("/worker-departments"),
-  getById: async (id: string) => fetchWithAuth(`/worker-departments/bydepartment/${id}`),
+  getById: async (id: string) => fetchWithAuth(`/worker-departments/${id}`),
   remove: async (id: string) =>
     fetchWithAuth(`/worker-departments/${id}`, { method: "DELETE" }),
 },

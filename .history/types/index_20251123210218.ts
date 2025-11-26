@@ -79,7 +79,7 @@ export interface MedicationStock {
 // ✅ ACTUALIZAR ESTAS INTERFACES PARA QUE COINCIDAN CON EL BACKEND
 export interface DepartmentCreateRequest {
   name: string
-  headWorkerId: string  // ✅ CAMBIADO de 'headId' a 'headWorkerId'
+  headWorkerId?: string  // ✅ CAMBIADO de 'headId' a 'headWorkerId'
 }
 
 export interface DepartmentUpdateRequest {

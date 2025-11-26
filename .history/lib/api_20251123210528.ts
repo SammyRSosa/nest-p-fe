@@ -127,7 +127,6 @@ departments: {
       method: "POST",
       body: JSON.stringify(data),
     }),
-   //update aun no esta implementado en el backend  
   update: async (id: string, data: { name: string; headWorkerId: string }) =>
     fetchWithAuth(`/departments/${id}`, {
       method: "PUT", 
@@ -145,7 +144,7 @@ workerDepartments: {
       body: JSON.stringify(data),
     }),
   getAll: async () => fetchWithAuth("/worker-departments"),
-  getById: async (id: string) => fetchWithAuth(`/worker-departments/bydepartment/${id}`),
+  getById: async (id: string) => fetchWithAuth(`/worker-departments/${id}`),
   remove: async (id: string) =>
     fetchWithAuth(`/worker-departments/${id}`, { method: "DELETE" }),
 },
