@@ -32,7 +32,7 @@ export default function ConsultationsPage() {
     }
   }
 
-  const handleUpdateStatus = async (id: string, newStatus: string) => {
+  const handleUpdateStatus = async (id: string, newStatus: any) => {
     try {
       await api.consultations.updateStatus(id, newStatus)
       toast({
