@@ -1,4 +1,3 @@
-// 📁 types.ts - REEMPLAZAR CONTENIDO
 export enum UserRole {
   ADMIN = "admin",
   HEAD_OF_DEPARTMENT = "head_of_department",
@@ -15,9 +14,6 @@ export interface User {
   name: string
   email?: string
   departmentId?: string
-  code?: string
-  firstName?: string
-  lastName?: string
 }
 
 export interface AuthResponse {
@@ -32,31 +28,17 @@ export interface LoginCredentials {
 
 // ============= DEPARTAMENTOS =============
 
-export interface HeadOfDepartment {
-  id: string
-  worker: User
-  department: Department
-  assignedAt: string
-  endedAt?: string
-}
-
 export interface Department {
   id: string
   name: string
   description?: string
-  headOfDepartment?: HeadOfDepartment  // ✅ CAMBIADO de 'head' a 'headOfDepartment'
+  headId?: string
+  head?: User
   workers: User[]
   medicationStock: MedicationStock[]
   isActive: boolean
   createdAt: string
   updatedAt: string
-  stocks?: Stock[] // ✅ AGREGADO para compatibilidad con backend
-}
-
-export interface Stock {
-  id: string
-  department: Department
-  // ... otras propiedades del stock
 }
 
 export interface MedicationStock {
@@ -76,15 +58,18 @@ export interface MedicationStock {
   approvedAt?: string
 }
 
-// ✅ ACTUALIZAR ESTAS INTERFACES PARA QUE COINCIDAN CON EL BACKEND
 export interface DepartmentCreateRequest {
   name: string
-  headWorkerId: string  // ✅ CAMBIADO de 'headId' a 'headWorkerId'
+  description?: string
+  headId?: string
+  initialStock?: MedicationStockRequest[]
 }
 
 export interface DepartmentUpdateRequest {
   name?: string
-  headWorkerId?: string  // ✅ CAMBIADO de 'headId' a 'headWorkerId'
+  description?: string
+  headId?: string
+  isActive?: boolean
 }
 
 export interface MedicationStockRequest {
@@ -143,14 +128,4 @@ export interface StaffAssignment {
   departmentId: string
   assignedAt: string
   assignedBy: string
-}
-
-// ✅ NUEVA INTERFACE PARA ASIGNACIONES DE TRABAJADORES
-export interface WorkerDepartment {
-  id: string
-  worker: User
-  department: Department
-  active: boolean
-  joinedAt: string
-  leftAt?: string
 }
