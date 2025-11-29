@@ -5,7 +5,7 @@ import type React from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { UserRole } from "@/types"
-import { Users, Calendar, FileText, Building2, Activity, ClipboardList, X, Package, BarChart3 } from "lucide-react"
+import { Users, Calendar, FileText, Building2, Activity, ClipboardList, X } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -25,8 +25,6 @@ const navigationByRole: Record<UserRole, NavItem[]> = {
   [UserRole.ADMIN]: [
     { label: "Trabajadores", href: "/dashboard/admin", icon: <Users className="h-5 w-5" /> },
     { label: "Departamentos", href: "/dashboard/admin/departments", icon: <Building2 className="h-5 w-5" /> },
-    { label: "Stock Medicamentos", href: "/dashboard/admin/departments/stock", icon: <Package className="h-5 w-5" /> },
-    { label: "Reportes", href: "/dashboard/admin/departments/reports", icon: <BarChart3 className="h-5 w-5" /> },
     { label: "Pacientes", href: "/dashboard/admin/patients", icon: <Activity className="h-5 w-5" /> },
     { label: "Usuarios", href: "/dashboard/admin/users", icon: <Users className="h-5 w-5" /> },
   ],

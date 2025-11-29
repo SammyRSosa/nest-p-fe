@@ -118,59 +118,16 @@ export const api = {
       }),
   },
 
- // ---------------- DEPARTMENTS ----------------
-departments: {
-  getAll: async () => fetchWithAuth("/departments"),
-  getById: async (id: string) => fetchWithAuth(`/departments/${id}`),
-  create: async (data: { name: string; headWorkerId: string }) =>
-    fetchWithAuth("/departments", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-   //update aun no esta implementado en el backend  
-  update: async (id: string, data: { name: string; headWorkerId: string }) =>
-    fetchWithAuth(`/departments/${id}`, {
-      method: "PUT", 
-      body: JSON.stringify(data),
-    }),
-  delete: async (id: string) =>
-    fetchWithAuth(`/departments/${id}`, { method: "DELETE" }),
-},
-
-// ---------------- WORKER-DEPARTMENTS ----------------
-workerDepartments: {
-  assign: async (data: { workerId: string; departmentId: string }) =>
-    fetchWithAuth("/worker-departments", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-  getAll: async () => fetchWithAuth("/worker-departments"),
-  getById: async (id: string) => fetchWithAuth(`/worker-departments/bydepartment/${id}`),
-  remove: async (id: string) =>
-    fetchWithAuth(`/worker-departments/${id}`, { method: "DELETE" }),
-},
-
-  // ---------------- MEDICATION STOCK ----------------
-  medicationStock: {
-    getByDepartment: async (departmentId: string) => 
-      fetchWithAuth(`/departments/${departmentId}/stock`),
-    updateStock: async (departmentId: string, data: any) =>
-      fetchWithAuth(`/departments/${departmentId}/stock`, {
-        method: "PUT",
+  // ---------------- DEPARTMENTS ----------------
+  departments: {
+    getAll: async () => fetchWithAuth("/departments"),
+    create: async (data: any) =>
+      fetchWithAuth("/departments", {
+        method: "POST",
         body: JSON.stringify(data),
       }),
-    getPendingApprovals: async () => 
-      fetchWithAuth("/departments/stock/pending-approvals"),
-    approveStockUpdate: async (stockId: string, data: any) =>
-      fetchWithAuth(`/departments/stock/${stockId}/approve`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      }),
-    getConsumptionReport: async (medicationId: string, month: string, year: number) =>
-      fetchWithAuth(`/departments/stock/consumption/${medicationId}?month=${month}&year=${year}`),
-    getAllConsumption: async (month: string, year: number) =>
-      fetchWithAuth(`/departments/stock/consumption?month=${month}&year=${year}`),
   },
+
 
   // ---------------- USERS -----------------------
   users: {
