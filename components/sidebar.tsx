@@ -30,7 +30,8 @@ const navigationByRole: Record<UserRole, NavItem[]> = {
   ],
   [UserRole.HEAD_OF_DEPARTMENT]: [
     { label: "Pacientes", href: "/dashboard/head", icon: <Activity className="h-5 w-5" /> },
-    { label: "Crear Paciente", href: "/dashboard/head/create-patient", icon: <Users className="h-5 w-5" /> },
+    { label: "Consultas", href: "/dashboard/head/consultations", icon: <Users className="h-5 w-5" /> },
+    { label: "Remisiones", href: "/dashboard/head/remissions", icon: <Users className="h-5 w-5" /> },
   ],
   [UserRole.DOCTOR]: [
     { label: "Consultas", href: "/dashboard/doctor", icon: <Calendar className="h-5 w-5" /> },

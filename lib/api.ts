@@ -1,4 +1,6 @@
 import type { AuthResponse, LoginCredentials } from "@/types"
+import { de } from "date-fns/locale"
+import { create } from "domain"
 import { register } from "module"
 
 // Normalize base URL (avoid double slashes)
@@ -121,12 +123,36 @@ export const api = {
   // ---------------- DEPARTMENTS ----------------
   departments: {
     getAll: async () => fetchWithAuth("/departments"),
-    create: async (data: any) =>
+    getById: async (id: string) => fetchWithAuth(`/departments/${id}`),
+    create: async (data: { name: string; headWorkerId: string }) =>
       fetchWithAuth("/departments", {
         method: "POST",
         body: JSON.stringify(data),
       }),
+    //update aun no esta implementado en el backend  
+    update: async (id: string, data: { name: string; headWorkerId: string }) =>
+      fetchWithAuth(`/departments/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    delete: async (id: string) =>
+      fetchWithAuth(`/departments/${id}`, { method: "DELETE" }),
   },
+  medicalPosts: {
+    getAll: async () => fetchWithAuth("/medical-posts"),
+  },
+
+  workerDepartments: {
+  assign: async (data: { workerId: string; departmentId: string }) =>
+    fetchWithAuth("/worker-departments", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  getAll: async () => fetchWithAuth("/worker-departments"),
+  getById: async (id: string) => fetchWithAuth(`/worker-departments/bydepartment/${id}`),
+  remove: async (id: string) =>
+    fetchWithAuth(`/worker-departments/${id}`, { method: "DELETE" }),
+},
 
 
   // ---------------- USERS -----------------------
@@ -157,6 +183,22 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify({ status }),
       }),
+    getByDepartment: async (departmentId: string) =>
+      fetchWithAuth(`/consultations/by-department/${departmentId}`),
+    getByWorker: async (workerId: string) =>
+      fetchWithAuth(`/consultations/by-worker/${workerId}`),
+    getOwn: async () =>
+      fetchWithAuth("consultations/my-consultations/own"),
+    createProgrammed: async (data: any) =>
+      fetchWithAuth("/consultations/programmed", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    createEmergency: async (data: any) =>
+      fetchWithAuth("/consultations/emergency", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
   },
 
   // ---------- REMISSIONS ----------
@@ -176,5 +218,8 @@ export const api = {
         method: "POST",
         body: JSON.stringify(data),
       }),
+
+    delete: async (id: string) =>
+      fetchWithAuth(`/remissions/${id}`, { method: "DELETE" }),
   },
 }
