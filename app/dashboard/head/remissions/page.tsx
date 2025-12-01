@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectItem, SelectContent, SelectValue } from "@/components/ui/select";
 import { motion } from "framer-motion";
-import { Plus, Edit2, Trash2, Send, FileText, ArrowRight } from "lucide-react";
+import { Plus, Trash2, Send, FileText, ArrowRight, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { StatCard } from "@/components/stat-card";
@@ -47,7 +47,6 @@ function HeadRemissionsContent() {
   const [search, setSearch] = useState("");
   const [selectedRemission, setSelectedRemission] = useState<Remission | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -87,8 +86,7 @@ function HeadRemissionsContent() {
 
   const fetchMedicalPosts = async () => {
     try {
-      // Asumiendo que existe un endpoint para obtener posts médicos
-      // Si no existe, ajusta según tu API
+      // Ajusta según tu API
       const data = await api.medicalPosts?.getAll?.() || [];
       setMedicalPosts(data);
     } catch (error) {
@@ -103,75 +101,42 @@ function HeadRemissionsContent() {
         return;
       }
 
-      if (formData.type === "internal" && !formData.fromDepartmentId) {
-        alert("Por favor seleccione el departamento de origen");
-        return;
+      if (formData.type === "internal") {
+        if (!formData.fromDepartmentId) {
+          alert("Por favor seleccione el departamento de origen");
+          return;
+        }
+        await api.remissions.createInternal({
+          patientId: formData.patientId,
+          fromDepartmentId: formData.fromDepartmentId,
+          toDepartmentId: formData.toDepartmentId,
+        });
+      } else {
+        if (!formData.medicalPostId) {
+          alert("Por favor seleccione el post médico");
+          return;
+        }
+        await api.remissions.createExternal({
+          patientId: formData.patientId,
+          toDepartmentId: formData.toDepartmentId,
+          medicalPostId: formData.medicalPostId,
+        });
       }
-
-      if (formData.type === "external" && !formData.medicalPostId) {
-        alert("Por favor seleccione el post médico");
-        return;
-      }
-
-      await api.remissions.create({
-        type: formData.type,
-        patientId: formData.patientId,
-        toDepartmentId: formData.toDepartmentId,
-        fromDepartmentId: formData.type === "internal" ? formData.fromDepartmentId : undefined,
-        medicalPostId: formData.type === "external" ? formData.medicalPostId : undefined,
-      });
 
       fetchRemissions();
       setIsAddModalOpen(false);
-      setFormData({
-        type: "internal",
-        patientId: "",
-        toDepartmentId: "",
-        fromDepartmentId: "",
-        medicalPostId: "",
-      });
+      resetForm();
     } catch (error) {
       console.error("Error creating remission:", error);
       alert("Error al crear la remisión");
     }
   };
 
-  const handleEditRemission = async () => {
-    if (!selectedRemission) return;
-    try {
-      if (!formData.patientId || !formData.toDepartmentId) {
-        alert("Por favor complete los campos requeridos");
-        return;
-      }
-
-      await api.remissions.create({
-        type: formData.type,
-        patientId: formData.patientId,
-        toDepartmentId: formData.toDepartmentId,
-        fromDepartmentId: formData.type === "internal" ? formData.fromDepartmentId : undefined,
-        medicalPostId: formData.type === "external" ? formData.medicalPostId : undefined,
-      });
-
-      fetchRemissions();
-      setIsEditModalOpen(false);
-      setSelectedRemission(null);
-      setFormData({
-        type: "internal",
-        patientId: "",
-        toDepartmentId: "",
-        fromDepartmentId: "",
-        medicalPostId: "",
-      });
-    } catch (error) {
-      console.error("Error updating remission:", error);
-      alert("Error al actualizar la remisión");
-    }
-  };
-
   const handleDeleteRemission = async () => {
     if (!selectedRemission) return;
     try {
-      await api.remissions.delete?.(selectedRemission.id);
+      // Crear una solicitud DELETE si tu API lo soporta
+      await api.remissions.delete(selectedRemission.id);
       fetchRemissions();
       setIsDeleteModalOpen(false);
       setSelectedRemission(null);
@@ -181,19 +146,32 @@ function HeadRemissionsContent() {
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      type: "internal",
+      patientId: "",
+      toDepartmentId: "",
+      fromDepartmentId: "",
+      medicalPostId: "",
+    });
+  };
+
   useEffect(() => {
-    fetchRemissions();
-    fetchPatients();
-    fetchDepartments();
-    fetchMedicalPosts();
-    setLoading(false);
+    Promise.all([
+      fetchRemissions(),
+      fetchPatients(),
+      fetchDepartments(),
+      fetchMedicalPosts(),
+    ]).finally(() => setLoading(false));
   }, []);
 
   const filtered = remissions.filter((r) => {
     const matchesType = typeFilter ? r.type === typeFilter : true;
     const matchesSearch =
-      `${r.patient.firstName} ${r.patient.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
-      r.toDepartment.name.toLowerCase().includes(search.toLowerCase());
+      `${r.patient?.firstName || ""} ${r.patient?.lastName || ""}`.toLowerCase().includes(search.toLowerCase()) ||
+      r.toDepartment?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      (r.fromDepartment?.name?.toLowerCase().includes(search.toLowerCase())) ||
+      (r.medicalPost?.name?.toLowerCase().includes(search.toLowerCase()));
     return matchesType && matchesSearch;
   });
 
@@ -202,22 +180,6 @@ function HeadRemissionsContent() {
     internal: remissions.filter((r) => r.type === "internal").length,
     external: remissions.filter((r) => r.type === "external").length,
     withConsultation: remissions.filter((r) => r.consultation).length,
-  };
-
-  const getTypeLabel = (type: string) => {
-    return type === "internal" ? "Interna" : "Externa";
-  };
-
-  const openEdit = (remission: Remission) => {
-    setSelectedRemission(remission);
-    setFormData({
-      type: remission.type,
-      patientId: remission.patient.id,
-      toDepartmentId: remission.toDepartment.id,
-      fromDepartmentId: remission.fromDepartment?.id || "",
-      medicalPostId: remission.medicalPost?.id || "",
-    });
-    setIsEditModalOpen(true);
   };
 
   return (
@@ -305,7 +267,7 @@ function HeadRemissionsContent() {
                     <CardContent className="pt-6">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 mb-3">
                             <h3 className="font-semibold text-lg">
                               {remission.patient?.firstName || "N/A"} {remission.patient?.lastName || ""}
                             </h3>
@@ -314,60 +276,54 @@ function HeadRemissionsContent() {
                                 ? "bg-blue-100 text-blue-700"
                                 : "bg-purple-100 text-purple-700"
                             }`}>
-                              {getTypeLabel(remission.type)}
+                              {remission.type === "internal" ? "Interna" : "Externa"}
                             </span>
                             {remission.consultation && (
-                              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
                                 Con Consulta
                               </span>
                             )}
                           </div>
-                          <div className="mt-3 grid grid-cols-3 gap-4 text-sm text-muted-foreground">
+                          
+                          <div className="grid grid-cols-3 gap-4 text-sm text-muted-foreground">
                             <div>
-                              <p className="text-xs uppercase tracking-wide">ID Remisión</p>
-                              <p className="font-mono">{remission.id.slice(0, 8)}</p>
+                              <p className="text-xs uppercase tracking-wide font-semibold">ID</p>
+                              <p className="font-mono text-gray-700">{remission.id.slice(0, 8)}</p>
                             </div>
                             <div>
-                              <p className="text-xs uppercase tracking-wide">Departamento Destino</p>
-                              <p>{remission.toDepartment?.name || "N/A"}</p>
+                              <p className="text-xs uppercase tracking-wide font-semibold">Departamento Destino</p>
+                              <p className="text-gray-700">{remission.toDepartment?.name || "N/A"}</p>
                             </div>
                             <div>
-                              <p className="text-xs uppercase tracking-wide">
-                                {remission.type === "internal" ? "Departamento Origen" : "Post Médico"}
+                              <p className="text-xs uppercase tracking-wide font-semibold">
+                                {remission.type === "internal" ? "Origen" : "Post Médico"}
                               </p>
-                              <p>
+                              <p className="text-gray-700">
                                 {remission.type === "internal"
                                   ? remission.fromDepartment?.name || "N/A"
                                   : remission.medicalPost?.name || "N/A"}
                               </p>
                             </div>
                             <div>
-                              <p className="text-xs uppercase tracking-wide">Fecha de Creación</p>
-                              <p>{new Date(remission.createdAt).toLocaleDateString()}</p>
+                              <p className="text-xs uppercase tracking-wide font-semibold">Fecha</p>
+                              <p className="text-gray-700">
+                                {new Date(remission.createdAt).toLocaleDateString("es-ES")}
+                              </p>
                             </div>
                           </div>
                         </div>
-                        <div className="flex flex-col gap-2 ml-4">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openEdit(remission)}
-                          >
-                            <Edit2 className="mr-1 h-4 w-4" />
-                            Editar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => {
-                              setSelectedRemission(remission);
-                              setIsDeleteModalOpen(true);
-                            }}
-                          >
-                            <Trash2 className="mr-1 h-4 w-4" />
-                            Eliminar
-                          </Button>
-                        </div>
+                        
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            setSelectedRemission(remission);
+                            setIsDeleteModalOpen(true);
+                          }}
+                          className="ml-4"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -388,8 +344,9 @@ function HeadRemissionsContent() {
               value={formData.type}
               onValueChange={(value) =>
                 setFormData({
-                  ...formData,
                   type: value as "internal" | "external",
+                  patientId: formData.patientId,
+                  toDepartmentId: formData.toDepartmentId,
                   fromDepartmentId: "",
                   medicalPostId: "",
                 })
@@ -445,7 +402,7 @@ function HeadRemissionsContent() {
                   <SelectValue placeholder="Seleccionar departamento de origen" />
                 </SelectTrigger>
                 <SelectContent>
-                  {departments.map((dept) => (
+                  {departments.filter(d => d.id !== formData.toDepartmentId).map((dept) => (
                     <SelectItem key={dept.id} value={dept.id}>
                       {dept?.name || "N/A"}
                     </SelectItem>
@@ -482,134 +439,7 @@ function HeadRemissionsContent() {
                 className="flex-1"
                 onClick={() => {
                   setIsAddModalOpen(false);
-                  setFormData({
-                    type: "internal",
-                    patientId: "",
-                    toDepartmentId: "",
-                    fromDepartmentId: "",
-                    medicalPostId: "",
-                  });
-                }}
-              >
-                Cancelar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* EDIT REMISSION MODAL */}
-      {isEditModalOpen && selectedRemission && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md my-8">
-            <h2 className="text-xl font-semibold mb-4">Editar Remisión</h2>
-
-            <Select
-              value={formData.type}
-              onValueChange={(value) =>
-                setFormData({
-                  ...formData,
-                  type: value as "internal" | "external",
-                  fromDepartmentId: "",
-                  medicalPostId: "",
-                })
-              }
-            >
-              <SelectTrigger className="mb-3">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="internal">Remisión Interna</SelectItem>
-                <SelectItem value="external">Remisión Externa</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={formData.patientId}
-              onValueChange={(value) => setFormData({ ...formData, patientId: value })}
-            >
-              <SelectTrigger className="mb-3">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {patients.map((patient) => (
-                  <SelectItem key={patient.id} value={patient.id}>
-                    {patient?.firstName || "N/A"} {patient?.lastName || ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={formData.toDepartmentId}
-              onValueChange={(value) => setFormData({ ...formData, toDepartmentId: value })}
-            >
-              <SelectTrigger className="mb-3">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {departments.map((dept) => (
-                  <SelectItem key={dept.id} value={dept.id}>
-                    {dept?.name || "N/A"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {formData.type === "internal" ? (
-              <Select
-                value={formData.fromDepartmentId}
-                onValueChange={(value) => setFormData({ ...formData, fromDepartmentId: value })}
-              >
-                <SelectTrigger className="mb-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id}>
-                      {dept?.name || "N/A"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Select
-                value={formData.medicalPostId}
-                onValueChange={(value) => setFormData({ ...formData, medicalPostId: value })}
-              >
-                <SelectTrigger className="mb-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {medicalPosts.map((post) => (
-                    <SelectItem key={post.id} value={post.id}>
-                      {post?.name || "N/A"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-
-            <div className="flex gap-2">
-              <Button
-                className="flex-1 bg-accent hover:bg-accent/90"
-                onClick={handleEditRemission}
-              >
-                Guardar
-              </Button>
-              <Button
-                variant="ghost"
-                className="flex-1"
-                onClick={() => {
-                  setIsEditModalOpen(false);
-                  setSelectedRemission(null);
-                  setFormData({
-                    type: "internal",
-                    patientId: "",
-                    toDepartmentId: "",
-                    fromDepartmentId: "",
-                    medicalPostId: "",
-                  });
+                  resetForm();
                 }}
               >
                 Cancelar
@@ -623,10 +453,16 @@ function HeadRemissionsContent() {
       {isDeleteModalOpen && selectedRemission && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-semibold mb-4 text-red-600">Eliminar Remisión</h2>
+            <div className="flex items-center gap-3 mb-4">
+              <AlertCircle className="h-6 w-6 text-red-600" />
+              <h2 className="text-xl font-semibold text-red-600">Eliminar Remisión</h2>
+            </div>
             <p className="text-sm text-muted-foreground mb-6">
-              ¿Está seguro de que desea eliminar esta remisión de {selectedRemission.patient?.firstName}{" "}
-              {selectedRemission.patient?.lastName}? Esta acción no se puede deshacer.
+              ¿Está seguro de que desea eliminar la remisión de{" "}
+              <span className="font-semibold">
+                {selectedRemission.patient?.firstName} {selectedRemission.patient?.lastName}
+              </span>
+              ? Esta acción no se puede deshacer.
             </p>
             <div className="flex gap-2">
               <Button

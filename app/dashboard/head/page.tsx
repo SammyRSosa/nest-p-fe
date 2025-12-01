@@ -4,100 +4,81 @@ import { useState, useEffect } from "react"
 import { ProtectedRoute } from "@/components/protected-route"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { TableList } from "@/components/table-list"
-import { StatCard } from "@/components/stat-card"
 import { Button } from "@/components/ui/button"
-import { Users, UserPlus, Activity, Calendar } from "lucide-react"
+import { Users, UserPlus, Building2, Activity } from "lucide-react"
 import { api } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
+import { usePatients } from "@/hooks/usePatients"
 import { UserRole } from "@/types"
+import { useToast } from "@/hooks/use-toast"
+import { PatientTable } from "@/components/admin/PatientTable"
+import { PatientForm } from "@/components/admin/PatientForm"
 
-function HeadDashboardContent() {
-  const [patients, setPatients] = useState([])
-  const [loading, setLoading] = useState(true)
-  const { toast } = useToast()
+function AdminPatientsContent() {
+  const { patients, loading, createPatient, updatePatient, deletePatient } = usePatients()
+  const [modalType, setModalType] = useState<"create" | "edit" | null>(null)
+  const [selectedPatient, setSelectedPatient] = useState<any>(null)
 
-  useEffect(() => {
-    loadPatients()
-  }, [])
-
-  const loadPatients = async () => {
-    try {
-      const data = await api.patients.getAll()
-      setPatients(data)
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "No se pudieron cargar los pacientes",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
+  const openCreate = () => {
+    setSelectedPatient(null)
+    setModalType("create")
   }
 
-  const columns = [
-    { key: "name", label: "Nombre" },
-    { key: "age", label: "Edad" },
-    { key: "diagnosis", label: "Diagnóstico" },
-    { key: "lastVisit", label: "Última Visita" },
-    {
-      key: "status",
-      label: "Estado",
-      render: (patient: any) => (
-        <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            patient.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-          }`}
-        >
-          {patient.status === "active" ? "Activo" : "Inactivo"}
-        </span>
-      ),
-    },
-  ]
+  const openEdit = (patient: any) => {
+    setSelectedPatient(patient)
+    setModalType("edit")
+  }
+
+  const closeModal = () => {
+    setSelectedPatient(null)
+    setModalType(null)
+  }
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Jefe de Departamento</h1>
-            <p className="text-muted-foreground">Gestión de pacientes del departamento</p>
+            <h1 className="text-3xl font-bold">Gestión de Pacientes</h1>
           </div>
-          <Button className="bg-accent hover:bg-accent/90">
+          <Button className="bg-accent hover:bg-accent/90" onClick={openCreate}>
             <UserPlus className="mr-2 h-4 w-4" />
             Nuevo Paciente
           </Button>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard title="Total Pacientes" value={patients.length} icon={Users} description="En el departamento" />
-          <StatCard
-            title="Pacientes Activos"
-            value={patients.filter((p: any) => p.status === "active").length}
-            icon={Activity}
-            description="En tratamiento"
-          />
-          <StatCard title="Consultas Hoy" value="12" icon={Calendar} description="Programadas" />
-          <StatCard title="Nuevos Esta Semana" value="5" icon={UserPlus} description="Pacientes nuevos" />
-        </div>
-
         <div className="bg-card rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Pacientes del Departamento</h2>
+          <h2 className="text-xl font-semibold mb-4">Lista de Pacientes</h2>
           {loading ? (
             <p className="text-center text-muted-foreground py-8">Cargando...</p>
           ) : (
-            <TableList data={patients} columns={columns} searchPlaceholder="Buscar paciente..." />
+            <PatientTable data={patients} onEdit={openEdit} onDelete={deletePatient} />
           )}
         </div>
       </div>
+
+      {/* MODAL */}
+      {modalType && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-semibold mb-4">
+              {modalType === "create" ? "Nuevo Paciente" : "Editar Paciente"}
+            </h2>
+            <PatientForm
+              initialData={selectedPatient}
+              onSubmit={modalType === "create" ? createPatient : (data) => updatePatient(selectedPatient.id, data)}
+              onCancel={closeModal}
+            />
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   )
 }
 
-export default function HeadDashboard() {
+export default function AdminPatientsPage() {
   return (
     <ProtectedRoute allowedRoles={[UserRole.HEAD_OF_DEPARTMENT]}>
-      <HeadDashboardContent />
+      <AdminPatientsContent />
     </ProtectedRoute>
   )
 }

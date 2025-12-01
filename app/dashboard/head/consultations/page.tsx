@@ -18,6 +18,8 @@ interface Consultation {
   type?: "programmed" | "emergency";
   scheduledAt?: Date;
   createdAt: string;
+  internalRemission?: any; 
+  externalRemission?: any;
   patient: {
     id: string;
     firstName: string;
@@ -352,7 +354,7 @@ function HeadConsultationsContent() {
                                 : "Consulta de Remisión"}
                             </h3>
                             <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                              {consultation.type === "programmed" ? "Programada" : "Emergencia"}
+                                {consultation.internalRemission || consultation.externalRemission ? "Programada" : "Emergencia"}
                             </span>
                           </div>
                           <div className="mt-3 grid grid-cols-3 gap-4 text-sm text-muted-foreground">

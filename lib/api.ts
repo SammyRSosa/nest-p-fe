@@ -144,16 +144,16 @@ export const api = {
   },
 
   workerDepartments: {
-  assign: async (data: { workerId: string; departmentId: string }) =>
-    fetchWithAuth("/worker-departments", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-  getAll: async () => fetchWithAuth("/worker-departments"),
-  getById: async (id: string) => fetchWithAuth(`/worker-departments/bydepartment/${id}`),
-  remove: async (id: string) =>
-    fetchWithAuth(`/worker-departments/${id}`, { method: "DELETE" }),
-},
+    assign: async (data: { workerId: string; departmentId: string }) =>
+      fetchWithAuth("/worker-departments", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    getAll: async () => fetchWithAuth("/worker-departments"),
+    getById: async (id: string) => fetchWithAuth(`/worker-departments/bydepartment/${id}`),
+    remove: async (id: string) =>
+      fetchWithAuth(`/worker-departments/${id}`, { method: "DELETE" }),
+  },
 
 
   // ---------------- USERS -----------------------
@@ -210,6 +210,18 @@ export const api = {
 
     create: async (data: any) =>
       fetchWithAuth("/remissions", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    createInternal: async (data: { patientId: string; fromDepartmentId: string; toDepartmentId: string }) =>
+      fetchWithAuth("/remissions/internal", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    createExternal: async (data: { patientId: string; toDepartmentId: string; medicalPostId: string }) =>
+      fetchWithAuth("/remissions/external", {
         method: "POST",
         body: JSON.stringify(data),
       }),
@@ -326,4 +338,18 @@ medicationDeliveryItems: {
 
 
 
+}
+  
+  // ---------- CLINIC HISTORIES ----------
+  clinic_histories: {
+    getAll: async () => fetchWithAuth("/clinic-history"),
+
+    getMyOwn: async () => fetchWithAuth(`/clinic-history/my-history/own`),
+    
+    create: async (data: any) =>
+      fetchWithAuth("/clinic_histories", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  },
 }
