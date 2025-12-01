@@ -222,4 +222,17 @@ export const api = {
     delete: async (id: string) =>
       fetchWithAuth(`/remissions/${id}`, { method: "DELETE" }),
   },
+  
+  // ---------- CLINIC HISTORIES ----------
+  clinic_histories: {
+    getAll: async () => fetchWithAuth("/clinic-histories"),
+
+    getMyOwn: async () => fetchWithAuth(`/clinic-histories/my-history/own`),
+    
+    create: async (data: any) =>
+      fetchWithAuth("/clinic_histories", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  },
 }
