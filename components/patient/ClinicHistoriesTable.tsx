@@ -10,8 +10,8 @@ interface ClinicHistoriesTableProp {
 export function ClinicHistoriesTable({ data }: ClinicHistoriesTableProp) {
   const columns = [
     { key: "id", label: "ID" },
-    { key: "consultations", label: "Consultas" },
-    { key: "notes", label: "Notas" },
+    { key: "status", label: "Estado" },
+    { key: "diagnosis", label: "Notas" },
     { 
       key: "createdAt", 
       label: "Fecha",
@@ -26,7 +26,7 @@ export function ClinicHistoriesTable({ data }: ClinicHistoriesTableProp) {
     safeData = data
   } else if (data && typeof data === 'object') {
     // Try common response structures
-    safeData = data.data || data.clinicHistories || data.histories || []
+    safeData = data.consultations || data.clinicHistories || data.histories || []
   }
 
   return (
