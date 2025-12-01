@@ -66,6 +66,7 @@ export const api = {
         body: JSON.stringify(data),
       })
     },
+      getProfile: async () => fetchWithAuth("/auth/profile"),
   },
 
   // ---------------- PATIENTS ----------------
@@ -234,6 +235,110 @@ export const api = {
     delete: async (id: string) =>
       fetchWithAuth(`/remissions/${id}`, { method: "DELETE" }),
   },
+
+    // ---------- MEDICATION ORDERS ----------
+  medicationOrders: {
+    getAll: async () => fetchWithAuth("/medication-orders"),
+    getById: async (id: string) => fetchWithAuth(`/medication-orders/${id}`),
+    create: async (data: any) =>
+      fetchWithAuth("/medication-orders", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    respond: async (id: string, data: { accept: boolean }) =>
+      fetchWithAuth(`/medication-orders/respond/${id}`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  },
+
+      // ---------- MEDICATIONS--------
+  medications: {
+    getAll: async () => fetchWithAuth("/medications"),
+    getById: async (id: string) => fetchWithAuth(`/medications/${id}`),
+    create: async (data: { 
+      name: string; 
+      code?: string; 
+      description?: string; 
+      unit?: string; 
+    }) => fetchWithAuth("/medications", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  },
+      // ---------- SockItems-----------
+  stockItems: {
+  getAll: async () => fetchWithAuth("/stock-items"),
+  findByDepartment: async (departmentId: string) =>
+    fetchWithAuth(`/stock-items/department/${departmentId}`),
+  findByMedication: async (medicationId: string) =>
+    fetchWithAuth(`/stock-items/medication/${medicationId}`),
+  findByDepartmentAndMedication: async (departmentId: string, medicationId: string) =>
+    fetchWithAuth(`/stock-items/department/${departmentId}/medication/${medicationId}`),
+  create: async (
+    departmentId: string,
+    medicationId: string,
+    quantity: number = 0,
+  ) =>
+    fetchWithAuth(`/stock-items/create/${departmentId}`, {
+      method: "POST",
+      body: JSON.stringify({ medicationId, quantity }),
+    }),
+},
+
+// ---------- Medication Deliveries -----------
+medicationDeliveries: {
+  getAll: async () => fetchWithAuth("/medication-deliveries"),
+
+  getById: async (id: string) =>
+    fetchWithAuth(`/medication-deliveries/${id}`),
+
+  create: async (
+    departmentId: string,
+    requestedById: string | undefined,
+    items: { medicationId: string; quantity: number }[],
+  ) =>
+    fetchWithAuth("/medication-deliveries", {
+      method: "POST",
+      body: JSON.stringify({ departmentId, requestedById, items }),
+    }),
+
+  updateStatus: async (id: string, status: "PENDING" | "COMPLETED" | "CANCELLED") =>
+    fetchWithAuth(`/medication-deliveries/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }),
+
+  delete: async (id: string) =>
+    fetchWithAuth(`/medication-deliveries/${id}`, { method: "DELETE" }),
+},
+// ---------- Medication Delivery Items -----------
+medicationDeliveryItems: {
+  getAll: async () => fetchWithAuth("/medication-delivery-items"),
+
+  findByDelivery: async (deliveryId: string) =>
+    fetchWithAuth(`/medication-delivery-items/delivery/${deliveryId}`),
+
+  create: async (deliveryId: string, medicationId: string, quantity: number) =>
+    fetchWithAuth("/medication-delivery-items", {
+      method: "POST",
+      body: JSON.stringify({ deliveryId, medicationId, quantity }),
+    }),
+
+  updateQuantity: async (id: string, quantity: number) =>
+    fetchWithAuth(`/medication-delivery-items/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ quantity }),
+    }),
+
+  delete: async (id: string) =>
+    fetchWithAuth(`/medication-delivery-items/${id}`, { method: "DELETE" }),
+},
+
+
+
+
+}
   
   // ---------- CLINIC HISTORIES ----------
   clinic_histories: {
