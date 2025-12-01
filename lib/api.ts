@@ -237,9 +237,9 @@ export const api = {
   
   // ---------- CLINIC HISTORIES ----------
   clinic_histories: {
-    getAll: async () => fetchWithAuth("/clinic-histories"),
+    getAll: async () => fetchWithAuth("/clinic-history"),
 
-    getMyOwn: async () => fetchWithAuth(`/clinic-histories/my-history/own`),
+    getMyOwn: async () => fetchWithAuth(`/clinic-history/my-history/own`),
     
     create: async (data: any) =>
       fetchWithAuth("/clinic_histories", {
