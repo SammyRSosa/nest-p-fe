@@ -8,6 +8,9 @@ import { UserRole } from "@/types"
 import { Users, Calendar, FileText, Building2, Activity, ClipboardList, X, Pill, Truck } from "lucide-react";
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { api } from "@/lib/api"
+import { useEffect, useState } from "react"
+
 
 interface SidebarProps {
   role: UserRole
@@ -56,7 +59,39 @@ const navigationByRole: Record<UserRole, NavItem[]> = {
 
 export function Sidebar({ role, isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname()
-  const navItems = navigationByRole[role] || []
+  const [isAlmacenHOD, setIsAlmacenHOD] = useState(false)
+
+useEffect(() => {
+  async function loadDept() {
+    if (role !== UserRole.HEAD_OF_DEPARTMENT) return
+
+    try {
+      const dep = await api.departments.getmydep()
+      console.log("Departamento del HOD:", dep)
+
+      // FORZAR a Almacén solo para probar
+      if (dep?.name !== "Almacén") {
+        setIsAlmacenHOD(true)
+      }
+      // TEMPORALMENTE para test:
+      // setIsAlmacenHOD(dep?.name === "Oncologia") 
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  loadDept()
+}, [role])
+
+
+
+  let navItems = navigationByRole[role] || []
+
+  // Si es HEAD_OF_DEPARTMENT y NO es del departamento Almacén → ocultar varias opciones
+  if (role === UserRole.HEAD_OF_DEPARTMENT && !isAlmacenHOD) {
+    const labelsToHide = ["Pacientes", "Consultas", "Remisiones"]
+    navItems = navItems.filter(item => !labelsToHide.includes(item.label))
+  }
 
   return (
     <>
