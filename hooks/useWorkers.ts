@@ -22,17 +22,37 @@ export function useWorkers() {
     }
   }
 
-  const createWorker = async (worker: any) => {
+const createWorker = async (worker: any) => {
+  try {
     await api.workers.create(worker)
     toast({ title: "Éxito", description: "Trabajador creado correctamente" })
     await loadWorkers()
+    return true  // éxito
+  } catch (error: any) {
+    toast({
+      title: "Error",
+      description: error.response?.data?.message || "Error al crear trabajador",
+      variant: "destructive",
+    })
+    return false // fallo
   }
+}
 
-  const updateWorker = async (id: string, worker: any) => {
+const updateWorker = async (id: string, worker: any) => {
+  try {
     await api.workers.update(id, worker)
     toast({ title: "Éxito", description: "Trabajador actualizado correctamente" })
     await loadWorkers()
+    return true
+  } catch (error: any) {
+    toast({
+      title: "Error",
+      description: error.response?.data?.message || "Error al actualizar trabajador",
+      variant: "destructive",
+    })
+    return false
   }
+}
 
   const deleteWorker = async (id: string) => {
     await api.workers.delete(id)

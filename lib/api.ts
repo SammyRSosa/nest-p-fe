@@ -126,6 +126,8 @@ export const api = {
     getmydep: async () => fetchWithAuth("/departments/by-head"),
     getAll: async () => fetchWithAuth("/departments"),
     getById: async (id: string) => fetchWithAuth(`/departments/${id}`),
+    getByName: async (query: string) =>
+      fetchWithAuth(`/departments/search?q=${encodeURIComponent(query)}`),
     create: async (data: { name: string; headWorkerId: string }) =>
       fetchWithAuth("/departments", {
         method: "POST",
