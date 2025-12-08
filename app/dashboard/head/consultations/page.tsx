@@ -6,10 +6,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectItem, SelectContent, SelectValue } from "@/components/ui/select";
 import { motion } from "framer-motion";
-import { CheckCircle, Clock, AlertCircle, FileText, Plus, Edit2, Pill, Package } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, FileText, Plus, Edit2, Pill, Package, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { StatCard } from "@/components/stat-card";
+
+interface Medication {
+  id: string;
+  name: string;
+  code?: string;
+  unit?: string;
+}
+
+interface Prescription {
+  id: string;
+  medicationId: string;
+  medication?: Medication;
+  quantity: number;
+  instructions?: string;
+}
 
 interface Consultation {
   id: string;
@@ -18,8 +33,9 @@ interface Consultation {
   type?: "programmed" | "emergency";
   scheduledAt?: Date;
   createdAt: string;
-  internalRemission?: any; 
+  internalRemission?: any;
   externalRemission?: any;
+  prescriptions?: Prescription[];
   patient: {
     id: string;
     firstName: string;
@@ -51,6 +67,7 @@ interface Supply {
 
 function HeadConsultationsContent() {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
+  const [medications, setMedications] = useState<Medication[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
   const [remissions, setRemissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,10 +79,19 @@ function HeadConsultationsContent() {
   const [isDiagnosisModalOpen, setIsDiagnosisModalOpen] = useState(false);
   const [isSupplyModalOpen, setIsSupplyModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isPrescriptionModalOpen, setIsPrescriptionModalOpen] = useState(false);
   const [diagnosis, setDiagnosis] = useState("");
   const [supplies, setSupplies] = useState<Supply[]>([{ id: "1", name: "", quantity: 0 }]);
   const [supplyNotes, setSupplyNotes] = useState("");
-  
+  const [isSavingPrescription, setIsSavingPrescription] = useState(false);
+
+  // Prescription form states
+  const [prescriptionForm, setPrescriptionForm] = useState({
+    medicationId: "",
+    quantity: 0,
+    instructions: "",
+  });
+
   // Form states
   const [formData, setFormData] = useState({
     type: "emergency",
@@ -79,6 +105,27 @@ function HeadConsultationsContent() {
     try {
       const data = await api.consultations.getOwn();
       setConsultations(data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const getAvailableRemissions = () => {
+    // Obtener los IDs de remisiones que ya tienen consulta
+    const remissionsWithConsultation = new Set(
+      consultations
+        .filter(c => c.internalRemission?.id || c.externalRemission?.id)
+        .map(c => c.internalRemission?.id || c.externalRemission?.id)
+    );
+
+    // Filtrar remisiones que no tengan consulta
+    return remissions.filter(remission => !remissionsWithConsultation.has(remission.id));
+  };
+
+  const fetchMedications = async () => {
+    try {
+      const data = await api.medications.getAll();
+      setMedications(data);
     } catch (error) {
       console.error(error);
     }
@@ -102,7 +149,7 @@ function HeadConsultationsContent() {
     }
   };
 
-  const updateStatus = async (id: string, status: string, diagnosisText?: string): Promise<void> => {
+  const updateStatus = async (id: string, status: string): Promise<void> => {
     try {
       await api.consultations.updateStatus(id, status as "pending" | "closed" | "canceled");
       fetchConsultations();
@@ -116,12 +163,52 @@ function HeadConsultationsContent() {
   const saveDiagnosis = async () => {
     if (!selectedConsultation || !diagnosis.trim()) return;
     try {
-      await updateStatus(selectedConsultation.id, selectedConsultation.status, diagnosis);
+      await api.consultations.updateStatus(selectedConsultation.id, status as "pending" | "closed" | "canceled", diagnosis);
       setIsDiagnosisModalOpen(false);
+      fetchConsultations();
       setSelectedConsultation(null);
       setDiagnosis("");
     } catch (error) {
       console.error("Error saving diagnosis:", error);
+    }
+  };
+
+  const addPrescription = async () => {
+    if (!selectedConsultation || !prescriptionForm.medicationId || prescriptionForm.quantity <= 0) {
+      alert("Por favor complete todos los campos requeridos");
+      return;
+    }
+
+    try {
+      setIsSavingPrescription(true);
+      await api.consultationPrescriptions.create({
+        consultationId: selectedConsultation.id,
+        medicationId: prescriptionForm.medicationId,
+        quantity: prescriptionForm.quantity,
+        instructions: prescriptionForm.instructions,
+      });
+
+      fetchConsultations();
+      setPrescriptionForm({ medicationId: "", quantity: 0, instructions: "" });
+      setIsPrescriptionModalOpen(false);
+      setSelectedConsultation(null);
+    } catch (error) {
+      console.error("Error adding prescription:", error);
+      alert("Error al agregar la prescripción");
+    } finally {
+      setIsSavingPrescription(false);
+    }
+  };
+
+  const removePrescription = async (prescriptionId: string) => {
+    if (!confirm("¿Está seguro de que desea eliminar esta prescripción?")) return;
+
+    try {
+      await api.consultationPrescriptions.remove(prescriptionId);
+      fetchConsultations();
+    } catch (error) {
+      console.error("Error removing prescription:", error);
+      alert("Error al eliminar la prescripción");
     }
   };
 
@@ -134,7 +221,6 @@ function HeadConsultationsContent() {
         notes: supplyNotes,
         departmentId: selectedConsultation.department.id,
       };
-      // API call for stock request - adjust endpoint as needed
       await api.consultations.update(selectedConsultation.id, { stockRequest: supplyData });
       fetchConsultations();
       setIsSupplyModalOpen(false);
@@ -167,7 +253,7 @@ function HeadConsultationsContent() {
           alert("Por favor complete todos los campos");
           return;
         }
-        const remission = remissions.find(r => r.id === formData.remissionId);
+        const remission = remissions.find((r) => r.id === formData.remissionId);
         await api.consultations.createProgrammed({
           remissionId: formData.remissionId,
           departmentId: remission.toDepartment.id,
@@ -179,7 +265,6 @@ function HeadConsultationsContent() {
           alert("Por favor complete todos los campos");
           return;
         }
-        console.log("Creating emergency consultation with data:", formData);
         await api.consultations.createEmergency({
           patientId: formData.patientId,
         });
@@ -200,21 +285,23 @@ function HeadConsultationsContent() {
 
   useEffect(() => {
     fetchConsultations();
+    fetchMedications();
     fetchPatients();
     fetchRemissions();
     setLoading(false);
   }, []);
 
   const filtered = consultations.filter((c) => {
-    const matchesStatus = statusFilter ? c.status === statusFilter : true;
-    const matchesType = typeFilter ? c.type === typeFilter : true;
-    const patientName = c.patient 
+    const matchesStatus = statusFilter === "all" || !statusFilter ? true : c.status === statusFilter;
+    const matchesType = typeFilter === "all" || !typeFilter ? true : c.type === typeFilter;
+    const patientName = c.patient
       ? `${c.patient.firstName} ${c.patient.lastName}`.toLowerCase()
       : "";
     const mainDoctorName = c.mainDoctor
       ? `${c.mainDoctor.firstName} ${c.mainDoctor.lastName}`.toLowerCase()
       : "";
-    const matchesSearch = patientName.includes(search.toLowerCase()) ||
+    const matchesSearch =
+      patientName.includes(search.toLowerCase()) ||
       mainDoctorName.includes(search.toLowerCase());
     return matchesStatus && matchesType && matchesSearch;
   });
@@ -311,6 +398,7 @@ function HeadConsultationsContent() {
                 <SelectValue placeholder="Filtrar por estado" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="pending">Pendiente</SelectItem>
                 <SelectItem value="closed">Cerrada</SelectItem>
                 <SelectItem value="canceled">Cancelada</SelectItem>
@@ -321,6 +409,7 @@ function HeadConsultationsContent() {
                 <SelectValue placeholder="Filtrar por tipo" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="programmed">Programada</SelectItem>
                 <SelectItem value="emergency">Emergencia</SelectItem>
               </SelectContent>
@@ -351,10 +440,16 @@ function HeadConsultationsContent() {
                             <h3 className="font-semibold text-lg">
                               {consultation.patient
                                 ? `${consultation.patient.firstName} ${consultation.patient.lastName}`
-                                : "Consulta de Remisión"}
+                                : consultation.externalRemission
+                                  ? `${consultation.externalRemission.patient?.firstName} ${consultation.externalRemission.patient?.lastName}`
+                                  : consultation.internalRemission
+                                    ? `${consultation.internalRemission.patient?.firstName} ${consultation.internalRemission.patient?.lastName}`
+                                    : "Consulta"}
                             </h3>
                             <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                                {consultation.internalRemission || consultation.externalRemission ? "Programada" : "Emergencia"}
+                              {consultation.internalRemission || consultation.externalRemission
+                                ? "Programada"
+                                : "Emergencia"}
                             </span>
                           </div>
                           <div className="mt-3 grid grid-cols-3 gap-4 text-sm text-muted-foreground">
@@ -364,7 +459,9 @@ function HeadConsultationsContent() {
                             </div>
                             <div>
                               <p className="text-xs uppercase tracking-wide">Doctor Principal</p>
-                              <p>{consultation.mainDoctor?.firstName} {consultation.mainDoctor?.lastName}</p>
+                              <p>
+                                {consultation.mainDoctor?.firstName} {consultation.mainDoctor?.lastName}
+                              </p>
                             </div>
                             <div>
                               <p className="text-xs uppercase tracking-wide">Departamento</p>
@@ -387,6 +484,45 @@ function HeadConsultationsContent() {
                             <div className="mt-3 p-2 bg-blue-50 rounded text-sm">
                               <p className="text-xs uppercase tracking-wide text-blue-600">Diagnóstico</p>
                               <p className="text-blue-900">{consultation.diagnosis}</p>
+                            </div>
+                          )}
+
+                          {/* Prescriptions Display */}
+                          {consultation.prescriptions && consultation.prescriptions.length > 0 && (
+                            <div className="mt-3 p-2 bg-purple-50 rounded text-sm">
+                              <p className="text-xs uppercase tracking-wide text-purple-600 font-semibold mb-2">
+                                Prescripciones ({consultation.prescriptions.length})
+                              </p>
+                              <div className="space-y-1">
+                                {consultation.prescriptions.map((prescription) => (
+                                  <div
+                                    key={prescription.id}
+                                    className="flex items-center justify-between text-purple-900 text-xs"
+                                  >
+                                    <div>
+                                      <span className="font-medium">
+                                        {prescription.medication?.name || "Medicamento"}
+                                      </span>
+                                      {" - "}
+                                      <span>
+                                        {prescription.quantity} {prescription.medication?.unit || "unidades"}
+                                      </span>
+                                      {prescription.instructions && (
+                                        <div className="text-purple-700 italic mt-0.5">
+                                          {prescription.instructions}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <button
+                                      onClick={() => removePrescription(prescription.id)}
+                                      className="text-red-600 hover:text-red-800 ml-2"
+                                      title="Eliminar prescripción"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -419,11 +555,12 @@ function HeadConsultationsContent() {
                             variant="outline"
                             onClick={() => {
                               setSelectedConsultation(consultation);
-                              setIsSupplyModalOpen(true);
+                              setPrescriptionForm({ medicationId: "", quantity: 0, instructions: "" });
+                              setIsPrescriptionModalOpen(true);
                             }}
                           >
-                            <Package className="mr-1 h-4 w-4" />
-                            Suministros
+                            <Plus className="mr-1 h-4 w-4" />
+                            Prescripción
                           </Button>
                         </div>
                       </div>
@@ -443,7 +580,8 @@ function HeadConsultationsContent() {
             <h2 className="text-xl font-semibold mb-4">Actualizar Estado</h2>
             <div className="mb-6">
               <p className="text-sm text-muted-foreground">
-                Paciente: {selectedConsultation.patient
+                Paciente:{" "}
+                {selectedConsultation.patient
                   ? `${selectedConsultation.patient.firstName} ${selectedConsultation.patient.lastName}`
                   : "Remisión"}
               </p>
@@ -495,7 +633,8 @@ function HeadConsultationsContent() {
             <h2 className="text-xl font-semibold mb-4">Agregar/Editar Diagnóstico</h2>
             <div className="mb-4">
               <p className="text-sm text-muted-foreground mb-2">
-                Paciente: {selectedConsultation.patient
+                Paciente:{" "}
+                {selectedConsultation.patient
                   ? `${selectedConsultation.patient.firstName} ${selectedConsultation.patient.lastName}`
                   : "Remisión"}
               </p>
@@ -529,6 +668,215 @@ function HeadConsultationsContent() {
         </div>
       )}
 
+      {/* PRESCRIPTION MODAL */}
+      {isPrescriptionModalOpen && selectedConsultation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg w-full max-w-2xl my-8 shadow-2xl">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4 rounded-t-lg">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <Pill className="h-6 w-6" />
+                Agregar Prescripción
+              </h2>
+              <p className="text-purple-100 text-sm mt-1">
+                Medicamentos y dosificación para el paciente
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              {/* Patient Info Card */}
+              <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-blue-600 font-semibold">Paciente</p>
+                      <p className="text-lg font-semibold text-blue-900 mt-1">
+                        {selectedConsultation.patient
+                          ? `${selectedConsultation.patient.firstName} ${selectedConsultation.patient.lastName}`
+                          : "Remisión"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-blue-600 font-semibold">Departamento</p>
+                      <p className="text-lg font-semibold text-blue-900 mt-1">
+                        {selectedConsultation.department.name}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Prescription Form */}
+              <div className="space-y-4">
+                {/* Medication Selection */}
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 block mb-2">
+                    Medicamento <span className="text-red-500">*</span>
+                  </label>
+                  <Select
+                    value={prescriptionForm.medicationId}
+                    onValueChange={(value) =>
+                      setPrescriptionForm({ ...prescriptionForm, medicationId: value })
+                    }
+                  >
+                    <SelectTrigger className="h-11 border-2 border-gray-200 hover:border-purple-400 focus:border-purple-600">
+                      <SelectValue placeholder="Seleccionar medicamento del catálogo..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-64">
+                      {medications.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500">
+                          No hay medicamentos disponibles
+                        </div>
+                      ) : (
+                        medications.map((med) => (
+                          <SelectItem key={med.id} value={med.id}>
+                            <div className="flex items-center gap-2">
+                              <Package className="h-4 w-4 text-purple-600" />
+                              <span className="font-medium">{med.name}</span>
+                              {med.code && <span className="text-gray-500 text-sm">({med.code})</span>}
+                              {med.unit && <span className="text-gray-400 text-xs ml-1">{med.unit}</span>}
+                            </div>
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {prescriptionForm.medicationId && (
+                    <div className="mt-2 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                      <p className="text-sm text-purple-700">
+                        <span className="font-semibold">Medicamento seleccionado:</span>{" "}
+                        {medications.find((m) => m.id === prescriptionForm.medicationId)?.name}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Quantity Input */}
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 block mb-2">
+                    Cantidad <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min="1"
+                      max="999"
+                      value={prescriptionForm.quantity || ""}
+                      onChange={(e) =>
+                        setPrescriptionForm({
+                          ...prescriptionForm,
+                          quantity: parseInt(e.target.value) || 0,
+                        })
+                      }
+                      placeholder="Ej: 2, 10, 30..."
+                      className="h-11 border-2 border-gray-200 hover:border-purple-400 focus:border-purple-600 text-lg"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">
+                      {medications.find((m) => m.id === prescriptionForm.medicationId)?.unit || "unidades"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Instructions */}
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 block mb-2">
+                    Instrucciones de Uso
+                  </label>
+                  <textarea
+                    className="w-full p-3 border-2 border-gray-200 rounded-lg hover:border-purple-400 focus:border-purple-600 focus:outline-none min-h-24 text-sm resize-none"
+                    placeholder="Ej: Tomar 1 comprimido cada 8 horas por 5 días&#10;Con alimentos&#10;No exceder dosis diaria"
+                    value={prescriptionForm.instructions}
+                    onChange={(e) =>
+                      setPrescriptionForm({ ...prescriptionForm, instructions: e.target.value })
+                    }
+                  />
+                  <p className="text-xs text-gray-500 mt-2">
+                    {prescriptionForm.instructions.length} caracteres
+                  </p>
+                </div>
+
+                {/* Current Prescriptions List */}
+                {selectedConsultation.prescriptions && selectedConsultation.prescriptions.length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      Prescripciones actuales ({selectedConsultation.prescriptions.length})
+                    </p>
+                    <div className="space-y-2">
+                      {selectedConsultation.prescriptions.map((prescription) => (
+                        <div
+                          key={prescription.id}
+                          className="flex items-center justify-between p-2 bg-white rounded border border-gray-200 hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">
+                              {prescription.medication?.name}
+                            </p>
+                            <p className="text-xs text-gray-600">
+                              {prescription.quantity} {prescription.medication?.unit || "unidades"}
+                            </p>
+                            {prescription.instructions && (
+                              <p className="text-xs text-gray-500 italic mt-1">
+                                {prescription.instructions}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => removePrescription(prescription.id)}
+                            className="ml-2 p-2 hover:bg-red-100 rounded transition-colors text-red-600 hover:text-red-700"
+                            title="Eliminar prescripción"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 px-6 py-4 rounded-b-lg border-t border-gray-200 flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                className="px-6 h-11 font-semibold"
+                onClick={() => {
+                  setIsPrescriptionModalOpen(false);
+                  setSelectedConsultation(null);
+                  setPrescriptionForm({ medicationId: "", quantity: 0, instructions: "" });
+                }}
+                disabled={isSavingPrescription}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="px-8 h-11 font-semibold bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white flex items-center gap-2"
+                onClick={addPrescription}
+                disabled={
+                  isSavingPrescription ||
+                  !prescriptionForm.medicationId ||
+                  prescriptionForm.quantity <= 0
+                }
+              >
+                {isSavingPrescription ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" />
+                    Agregar Prescripción
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* SUPPLIES REQUEST MODAL */}
       {isSupplyModalOpen && selectedConsultation && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
@@ -536,7 +884,8 @@ function HeadConsultationsContent() {
             <h2 className="text-xl font-semibold mb-4">Solicitar Suministros</h2>
             <div className="mb-4">
               <p className="text-sm text-muted-foreground mb-2">
-                Paciente: {selectedConsultation.patient
+                Paciente:{" "}
+                {selectedConsultation.patient
                   ? `${selectedConsultation.patient.firstName} ${selectedConsultation.patient.lastName}`
                   : "Remisión"}
               </p>
@@ -544,7 +893,7 @@ function HeadConsultationsContent() {
                 Departamento: {selectedConsultation.department.name}
               </p>
             </div>
-            
+
             <div className="mb-4 space-y-2 max-h-48 overflow-y-auto">
               {supplies.map((supply, index) => (
                 <div key={supply.id} className="flex gap-2 items-end">
@@ -618,15 +967,18 @@ function HeadConsultationsContent() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
           <div className="bg-white rounded-lg p-6 w-full max-w-md my-8">
             <h2 className="text-xl font-semibold mb-4">Nueva Consulta</h2>
-            
-            <Select value={formData.type} onValueChange={(value) => {
-              setFormData({
-                type: value as "programmed" | "emergency",
-                patientId: "",
-                remissionId: "",
-                scheduledAt: "",
-              });
-            }}>
+
+            <Select
+              value={formData.type}
+              onValueChange={(value) => {
+                setFormData({
+                  type: value as "programmed" | "emergency",
+                  patientId: "",
+                  remissionId: "",
+                  scheduledAt: "",
+                });
+              }}
+            >
               <SelectTrigger className="mb-3">
                 <SelectValue />
               </SelectTrigger>
@@ -638,7 +990,10 @@ function HeadConsultationsContent() {
 
             {formData.type === "emergency" ? (
               <>
-                <Select value={formData.patientId} onValueChange={(value) => setFormData({ ...formData, patientId: value })}>
+                <Select
+                  value={formData.patientId}
+                  onValueChange={(value) => setFormData({ ...formData, patientId: value })}
+                >
                   <SelectTrigger className="mb-3">
                     <SelectValue placeholder="Seleccionar paciente" />
                   </SelectTrigger>
@@ -653,16 +1008,25 @@ function HeadConsultationsContent() {
               </>
             ) : (
               <>
-                <Select value={formData.remissionId} onValueChange={(value) => setFormData({ ...formData, remissionId: value })}>
+                <Select
+                  value={formData.remissionId}
+                  onValueChange={(value) => setFormData({ ...formData, remissionId: value })}
+                >
                   <SelectTrigger className="mb-3">
                     <SelectValue placeholder="Seleccionar remisión" />
                   </SelectTrigger>
                   <SelectContent>
-                    {remissions.map((remission) => (
-                      <SelectItem key={remission.id} value={remission.id}>
-                        {remission.patient.firstName} {remission.patient.lastName} - {remission.toDepartment.name}
-                      </SelectItem>
-                    ))}
+                    {getAvailableRemissions().length === 0 ? (
+                      <div className="p-4 text-center text-gray-500 text-sm">
+                        No hay remisiones disponibles (todas ya tienen consulta)
+                      </div>
+                    ) : (
+                      getAvailableRemissions().map((remission) => (
+                        <SelectItem key={remission.id} value={remission.id}>
+                          {remission.patient.firstName} {remission.patient.lastName} - {remission.toDepartment.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
                 <Input
