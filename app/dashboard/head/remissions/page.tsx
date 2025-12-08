@@ -333,7 +333,7 @@ function HeadRemissionsContent() {
                                 ? "bg-blue-100 text-blue-700"
                                 : "bg-purple-100 text-purple-700"
                             }`}>
-                              {remission.type === "internal" ? "Interna" : "Externa"}
+                              {remission.medicalPost? "Externa" : "Interna"}
                             </span>
                             {remission.consultation && (
                               <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">

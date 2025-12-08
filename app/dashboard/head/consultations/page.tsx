@@ -110,6 +110,18 @@ function HeadConsultationsContent() {
     }
   };
 
+  const getAvailableRemissions = () => {
+    // Obtener los IDs de remisiones que ya tienen consulta
+    const remissionsWithConsultation = new Set(
+      consultations
+        .filter(c => c.internalRemission?.id || c.externalRemission?.id)
+        .map(c => c.internalRemission?.id || c.externalRemission?.id)
+    );
+
+    // Filtrar remisiones que no tengan consulta
+    return remissions.filter(remission => !remissionsWithConsultation.has(remission.id));
+  };
+
   const fetchMedications = async () => {
     try {
       const data = await api.medications.getAll();
@@ -151,7 +163,7 @@ function HeadConsultationsContent() {
   const saveDiagnosis = async () => {
     if (!selectedConsultation || !diagnosis.trim()) return;
     try {
-      await api.consultations.updateStatus(selectedConsultation.id,status as "pending" | "closed" | "canceled",diagnosis);
+      await api.consultations.updateStatus(selectedConsultation.id, status as "pending" | "closed" | "canceled", diagnosis);
       setIsDiagnosisModalOpen(false);
       fetchConsultations();
       setSelectedConsultation(null);
@@ -428,7 +440,11 @@ function HeadConsultationsContent() {
                             <h3 className="font-semibold text-lg">
                               {consultation.patient
                                 ? `${consultation.patient.firstName} ${consultation.patient.lastName}`
-                                : "Consulta de Remisión"}
+                                : consultation.externalRemission
+                                  ? `${consultation.externalRemission.patient?.firstName} ${consultation.externalRemission.patient?.lastName}`
+                                  : consultation.internalRemission
+                                    ? `${consultation.internalRemission.patient?.firstName} ${consultation.internalRemission.patient?.lastName}`
+                                    : "Consulta"}
                             </h3>
                             <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
                               {consultation.internalRemission || consultation.externalRemission
@@ -1000,11 +1016,17 @@ function HeadConsultationsContent() {
                     <SelectValue placeholder="Seleccionar remisión" />
                   </SelectTrigger>
                   <SelectContent>
-                    {remissions.map((remission) => (
-                      <SelectItem key={remission.id} value={remission.id}>
-                        {remission.patient.firstName} {remission.patient.lastName} - {remission.toDepartment.name}
-                      </SelectItem>
-                    ))}
+                    {getAvailableRemissions().length === 0 ? (
+                      <div className="p-4 text-center text-gray-500 text-sm">
+                        No hay remisiones disponibles (todas ya tienen consulta)
+                      </div>
+                    ) : (
+                      getAvailableRemissions().map((remission) => (
+                        <SelectItem key={remission.id} value={remission.id}>
+                          {remission.patient.firstName} {remission.patient.lastName} - {remission.toDepartment.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
                 <Input
