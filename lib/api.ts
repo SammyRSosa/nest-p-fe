@@ -401,5 +401,8 @@ export const api = {
         method: "POST",
         body: JSON.stringify(data),
       }),
+
+    getByPatient: async (patientId: string) =>
+      fetchWithAuth(`/clinic-history/by-patient/${patientId}`),  
   },
 }

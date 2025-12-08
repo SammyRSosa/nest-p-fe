@@ -43,8 +43,8 @@ const navigationByRole: Record<UserRole, NavItem[]> = {
     { label: "Entregas", href: "/dashboard/head/mainstockdeliveries", icon: <Truck className="h-5 w-5" /> },
   ],
   [UserRole.DOCTOR]: [
-    { label: "Consultas", href: "/dashboard/doctor", icon: <Calendar className="h-5 w-5" /> },
-    { label: "Pacientes", href: "/dashboard/doctor/patients", icon: <Activity className="h-5 w-5" /> },
+    { label: "Consultas", href: "/dashboard/head/consultations", icon: <Calendar className="h-5 w-5" /> },
+    { label: "Pacientes", href: "/dashboard/head", icon: <Activity className="h-5 w-5" /> },
   ],
   [UserRole.NURSE]: [
     { label: "Consultas", href: "/dashboard/nurse", icon: <Activity className="h-5 w-5" /> },
