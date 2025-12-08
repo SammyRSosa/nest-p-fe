@@ -57,7 +57,7 @@ function AdminDashboardContent() {
           />
           <StatCard
             title="Departamentos"
-            value="8"
+            value={new Set(workers.map((w) => w.department)).size}
             icon={Building2}
             description="Departamentos activos"
           />

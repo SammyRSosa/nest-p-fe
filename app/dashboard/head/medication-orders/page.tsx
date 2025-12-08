@@ -96,7 +96,7 @@ function MedicationOrdersContent() {
       label: "Acciones",
       render: (order: any) => (
         <div className="flex gap-2">
-          {order.status === "pending" && (
+          {/* {order.status === "pending" && (
             <>
               <Button 
                 variant="default" 
@@ -113,7 +113,7 @@ function MedicationOrdersContent() {
                 Rechazar
               </Button>
             </>
-          )}
+          )} */}
           <Button variant="outline" size="sm">
             Ver
           </Button>

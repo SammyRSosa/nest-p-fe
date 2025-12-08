@@ -30,6 +30,7 @@ const navigationByRole: Record<UserRole, NavItem[]> = {
     { label: "Departamentos", href: "/dashboard/admin/departments", icon: <Building2 className="h-5 w-5" /> },
     { label: "Pacientes", href: "/dashboard/admin/patients", icon: <Activity className="h-5 w-5" /> },
     { label: "Usuarios", href: "/dashboard/admin/users", icon: <Users className="h-5 w-5" /> },
+    { label: "Medicinas", href: "/dashboard/admin/medications", icon: <FileText className="h-5 w-5" /> },
   ],
   [UserRole.HEAD_OF_DEPARTMENT]: [
     { label: "Pacientes", href: "/dashboard/head", icon: <Activity className="h-5 w-5" /> },
@@ -38,14 +39,15 @@ const navigationByRole: Record<UserRole, NavItem[]> = {
     { label: "Pedidos de Medicamentos", href: "/dashboard/head/medication-orders", icon: <Pill className="h-5 w-5" /> },
     { label: "Stock del Departamento", href: "/dashboard/head/stock", icon: <Pill className="h-5 w-5" /> },
     { label: "Envíos a Departamentos", href: "/dashboard/head/deliveries", icon: <Truck className="h-5 w-5" /> },
+    { label: "Órdenes de Stock Principal", href: "/dashboard/head/mainstockorders", icon: <Building2 className="h-5 w-5" /> },
+    { label: "Entregas", href: "/dashboard/head/mainstockdeliveries", icon: <Truck className="h-5 w-5" /> },
   ],
   [UserRole.DOCTOR]: [
     { label: "Consultas", href: "/dashboard/doctor", icon: <Calendar className="h-5 w-5" /> },
     { label: "Pacientes", href: "/dashboard/doctor/patients", icon: <Activity className="h-5 w-5" /> },
   ],
   [UserRole.NURSE]: [
-    { label: "Pacientes", href: "/dashboard/nurse", icon: <Activity className="h-5 w-5" /> },
-    { label: "Tareas", href: "/dashboard/nurse/tasks", icon: <ClipboardList className="h-5 w-5" /> },
+    { label: "Consultas", href: "/dashboard/nurse", icon: <Activity className="h-5 w-5" /> },
   ],
   [UserRole.STAFF]: [
     { label: "Pacientes", href: "/dashboard/staff", icon: <Activity className="h-5 w-5" /> },
@@ -88,9 +90,13 @@ useEffect(() => {
   let navItems = navigationByRole[role] || []
 
   // Si es HEAD_OF_DEPARTMENT y NO es del departamento Almacén → ocultar varias opciones
-  if (role === UserRole.HEAD_OF_DEPARTMENT && !isAlmacenHOD) {
-    const labelsToHide = ["Pacientes", "Consultas", "Remisiones"]
-    navItems = navItems.filter(item => !labelsToHide.includes(item.label))
+  if (role === UserRole.HEAD_OF_DEPARTMENT && isAlmacenHOD) {
+    const labelsToShow = ["Pacientes", "Consultas", "Remisiones", "Pedidos de Medicamentos", "Envíos a Departamentos","Stock del Departamento"]
+    navItems = navItems.filter(item => labelsToShow.includes(item.label))
+  }else if (role === UserRole.HEAD_OF_DEPARTMENT && !isAlmacenHOD) {
+    // Si es HEAD_OF_DEPARTMENT y es del departamento Almacén → mostrar solo ciertas opciones
+    const labelsToShow = ["Órdenes de Stock Principal", "Entregas","Stock del Departamento"]
+    navItems = navItems.filter(item => labelsToShow.includes(item.label))
   }
 
   return (

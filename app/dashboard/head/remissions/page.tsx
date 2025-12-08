@@ -6,10 +6,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectItem, SelectContent, SelectValue } from "@/components/ui/select";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Send, FileText, ArrowRight, AlertCircle } from "lucide-react";
+import { Plus, Trash2, Send, FileText, ArrowRight, AlertCircle, Building2, Edit2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { StatCard } from "@/components/stat-card";
+
+interface MedicalPost {
+  id: string;
+  name: string;
+  createdAt?: Date;
+}
 
 interface Remission {
   id: string;
@@ -41,13 +47,19 @@ function HeadRemissionsContent() {
   const [remissions, setRemissions] = useState<Remission[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
-  const [medicalPosts, setMedicalPosts] = useState<any[]>([]);
+  const [medicalPosts, setMedicalPosts] = useState<MedicalPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [typeFilter, setTypeFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [selectedRemission, setSelectedRemission] = useState<Remission | null>(null);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedMedicalPost, setSelectedMedicalPost] = useState<MedicalPost | null>(null);
+  const [isAddRemissionModalOpen, setIsAddRemissionModalOpen] = useState(false);
+  const [isDeleteRemissionModalOpen, setIsDeleteRemissionModalOpen] = useState(false);
+  const [isManageMedicalPostsModalOpen, setIsManageMedicalPostsModalOpen] = useState(false);
+  const [isAddMedicalPostModalOpen, setIsAddMedicalPostModalOpen] = useState(false);
+  const [isDeleteMedicalPostModalOpen, setIsDeleteMedicalPostModalOpen] = useState(false);
+  const [newPostName, setNewPostName] = useState("");
+  const [isSavingPost, setIsSavingPost] = useState(false);
 
   const [formData, setFormData] = useState({
     type: "internal" as "internal" | "external",
@@ -86,11 +98,45 @@ function HeadRemissionsContent() {
 
   const fetchMedicalPosts = async () => {
     try {
-      // Ajusta según tu API
-      const data = await api.medicalPosts?.getAll?.() || [];
+      const data = await api.medicalPosts.getAll();
       setMedicalPosts(data);
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const handleAddMedicalPost = async () => {
+    if (!newPostName.trim()) {
+      alert("Por favor ingrese el nombre del post médico");
+      return;
+    }
+
+    try {
+      setIsSavingPost(true);
+      await api.medicalPosts.create(newPostName);
+      fetchMedicalPosts();
+      setNewPostName("");
+      alert("Post médico creado exitosamente");
+    } catch (error) {
+      console.error("Error creating medical post:", error);
+      alert("Error al crear el post médico");
+    } finally {
+      setIsSavingPost(false);
+    }
+  };
+
+  const handleDeleteMedicalPost = async () => {
+    if (!selectedMedicalPost) return;
+
+    try {
+      await api.medicalPosts.remove(selectedMedicalPost.id);
+      fetchMedicalPosts();
+      setIsDeleteMedicalPostModalOpen(false);
+      setSelectedMedicalPost(null);
+      alert("Post médico eliminado exitosamente");
+    } catch (error) {
+      console.error("Error deleting medical post:", error);
+      alert("Error al eliminar el post médico");
     }
   };
 
@@ -124,8 +170,9 @@ function HeadRemissionsContent() {
       }
 
       fetchRemissions();
-      setIsAddModalOpen(false);
+      setIsAddRemissionModalOpen(false);
       resetForm();
+      alert("Remisión creada exitosamente");
     } catch (error) {
       console.error("Error creating remission:", error);
       alert("Error al crear la remisión");
@@ -135,11 +182,11 @@ function HeadRemissionsContent() {
   const handleDeleteRemission = async () => {
     if (!selectedRemission) return;
     try {
-      // Crear una solicitud DELETE si tu API lo soporta
       await api.remissions.delete(selectedRemission.id);
       fetchRemissions();
-      setIsDeleteModalOpen(false);
+      setIsDeleteRemissionModalOpen(false);
       setSelectedRemission(null);
+      alert("Remisión eliminada exitosamente");
     } catch (error) {
       console.error("Error deleting remission:", error);
       alert("Error al eliminar la remisión");
@@ -166,7 +213,7 @@ function HeadRemissionsContent() {
   }, []);
 
   const filtered = remissions.filter((r) => {
-    const matchesType = typeFilter ? r.type === typeFilter : true;
+    const matchesType = typeFilter === "all" || !typeFilter ? true : r.type === typeFilter;
     const matchesSearch =
       `${r.patient?.firstName || ""} ${r.patient?.lastName || ""}`.toLowerCase().includes(search.toLowerCase()) ||
       r.toDepartment?.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -193,10 +240,19 @@ function HeadRemissionsContent() {
               Administración y seguimiento de remisiones médicas
             </p>
           </div>
-          <Button className="bg-accent hover:bg-accent/90" onClick={() => setIsAddModalOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nueva Remisión
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => setIsManageMedicalPostsModalOpen(true)}
+            >
+              <Building2 className="mr-2 h-4 w-4" />
+              Posts Médicos
+            </Button>
+            <Button className="bg-accent hover:bg-accent/90" onClick={() => setIsAddRemissionModalOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nueva Remisión
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -241,6 +297,7 @@ function HeadRemissionsContent() {
                 <SelectValue placeholder="Filtrar por tipo" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="internal">Interna</SelectItem>
                 <SelectItem value="external">Externa</SelectItem>
               </SelectContent>
@@ -284,7 +341,7 @@ function HeadRemissionsContent() {
                               </span>
                             )}
                           </div>
-                          
+
                           <div className="grid grid-cols-3 gap-4 text-sm text-muted-foreground">
                             <div>
                               <p className="text-xs uppercase tracking-wide font-semibold">ID</p>
@@ -312,13 +369,13 @@ function HeadRemissionsContent() {
                             </div>
                           </div>
                         </div>
-                        
+
                         <Button
                           size="sm"
                           variant="destructive"
                           onClick={() => {
                             setSelectedRemission(remission);
-                            setIsDeleteModalOpen(true);
+                            setIsDeleteRemissionModalOpen(true);
                           }}
                           className="ml-4"
                         >
@@ -335,7 +392,7 @@ function HeadRemissionsContent() {
       </div>
 
       {/* ADD REMISSION MODAL */}
-      {isAddModalOpen && (
+      {isAddRemissionModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
           <div className="bg-white rounded-lg p-6 w-full max-w-md my-8">
             <h2 className="text-xl font-semibold mb-4">Nueva Remisión</h2>
@@ -438,7 +495,7 @@ function HeadRemissionsContent() {
                 variant="ghost"
                 className="flex-1"
                 onClick={() => {
-                  setIsAddModalOpen(false);
+                  setIsAddRemissionModalOpen(false);
                   resetForm();
                 }}
               >
@@ -449,8 +506,107 @@ function HeadRemissionsContent() {
         </div>
       )}
 
-      {/* DELETE CONFIRMATION MODAL */}
-      {isDeleteModalOpen && selectedRemission && (
+      {/* MANAGE MEDICAL POSTS MODAL */}
+      {isManageMedicalPostsModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg w-full max-w-2xl my-8 shadow-2xl">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 rounded-t-lg">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <Building2 className="h-6 w-6" />
+                Gestionar Posts Médicos
+              </h2>
+              <p className="text-blue-100 text-sm mt-1">
+                Agregar y administrar los posts médicos externos
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              {/* Add New Post */}
+              <div className="border-b pb-6">
+                <h3 className="text-lg font-semibold mb-4">Agregar Nuevo Post Médico</h3>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Nombre del post médico"
+                    value={newPostName}
+                    onChange={(e) => setNewPostName(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={handleAddMedicalPost}
+                    disabled={isSavingPost || !newPostName.trim()}
+                  >
+                    {isSavingPost ? "Guardando..." : <Plus className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Medical Posts List */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">
+                  Posts Médicos Registrados ({medicalPosts.length})
+                </h3>
+                {medicalPosts.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    No hay posts médicos registrados
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {medicalPosts.map((post) => (
+                      <motion.div
+                        key={post.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                      >
+                        <Card className="hover:shadow-md transition-shadow">
+                          <CardContent className="pt-6 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-blue-100 rounded-lg">
+                                <Building2 className="h-5 w-5 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-900">{post.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  ID: {post.id}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                setSelectedMedicalPost(post);
+                                setIsDeleteMedicalPostModalOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 px-6 py-4 rounded-b-lg border-t border-gray-200 flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setIsManageMedicalPostsModalOpen(false)}
+              >
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE REMISSION CONFIRMATION MODAL */}
+      {isDeleteRemissionModalOpen && selectedRemission && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <div className="flex items-center gap-3 mb-4">
@@ -476,8 +632,44 @@ function HeadRemissionsContent() {
                 variant="outline"
                 className="flex-1"
                 onClick={() => {
-                  setIsDeleteModalOpen(false);
+                  setIsDeleteRemissionModalOpen(false);
                   setSelectedRemission(null);
+                }}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE MEDICAL POST CONFIRMATION MODAL */}
+      {isDeleteMedicalPostModalOpen && selectedMedicalPost && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertCircle className="h-6 w-6 text-red-600" />
+              <h2 className="text-xl font-semibold text-red-600">Eliminar Post Médico</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-6">
+              ¿Está seguro de que desea eliminar el post médico{" "}
+              <span className="font-semibold">{selectedMedicalPost.name}</span>
+              ? Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={handleDeleteMedicalPost}
+              >
+                Eliminar
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setIsDeleteMedicalPostModalOpen(false);
+                  setSelectedMedicalPost(null);
                 }}
               >
                 Cancelar
