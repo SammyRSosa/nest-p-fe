@@ -94,9 +94,22 @@ function AdminDashboardContent() {
             </h2>
             <WorkerForm
               initialData={selectedWorker}
-              onSubmit={modalType === "create" ? createWorker : (data) => updateWorker(selectedWorker.id, data)}
+              onSubmit={async (data) => {
+                let success = false;
+                if (modalType === "create") {
+                  success = await createWorker(data); // devuelve true/false
+                } else if (selectedWorker) {
+                  success = await updateWorker(selectedWorker.id, data); // devuelve true/false
+                }
+
+                if (success) {
+                  closeModal(); // cerrar modal si todo salió bien
+                }
+                // si falló, el toast ya se mostró desde useWorkers
+              }}
               onCancel={closeModal}
             />
+
           </div>
         </div>
       )}
