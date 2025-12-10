@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectItem, SelectContent, SelectValue } from "@/components/ui/select";
 import { motion } from "framer-motion";
-import { Check, X, Package, Clock, AlertCircle } from "lucide-react";
+import { Check, X, Package, Clock, AlertCircle, Eye, TrendingUp, Search } from "lucide-react";
 import { api } from "@/lib/api";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { StatCard } from "@/components/stat-card";
@@ -45,6 +45,7 @@ function AlmaceneroContent() {
   const [selectedOrder, setSelectedOrder] = useState<MedicationOrder | null>(null);
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
 
@@ -52,7 +53,6 @@ function AlmaceneroContent() {
     try {
       setLoading(true);
       const data = await api.medicationOrders.getAll();
-      console.log("Fetched orders:", data);
       setMedicationOrders(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching medication orders:", error);
@@ -71,6 +71,7 @@ function AlmaceneroContent() {
 
       await fetchMedicationOrders();
       setIsAcceptModalOpen(false);
+      setIsDetailsModalOpen(false);
       setSelectedOrder(null);
       alert("Orden aceptada y entrega creada exitosamente");
     } catch (error) {
@@ -90,6 +91,7 @@ function AlmaceneroContent() {
 
       await fetchMedicationOrders();
       setIsRejectModalOpen(false);
+      setIsDetailsModalOpen(false);
       setSelectedOrder(null);
       setRejectionReason("");
       alert("Orden rechazada exitosamente");
@@ -118,28 +120,38 @@ function AlmaceneroContent() {
     total: medicationOrders.length,
     pending: medicationOrders.filter((o) => !o.status || o.status === "pending").length,
     accepted: medicationOrders.filter((o) => o.status === "accepted").length,
-    rejected: medicationOrders.filter((o) => o.status === "denied").length,
+    denied: medicationOrders.filter((o) => o.status === "denied").length,
   };
 
-  const getStatusColor = (status?: string) => {
+  const getStatusConfig = (status?: string) => {
     switch (status) {
       case "accepted":
-        return "bg-green-100 text-green-700";
+        return {
+          label: "Aceptada",
+          color: "bg-green-50 border-green-200",
+          textColor: "text-green-700",
+          bgIcon: "bg-green-100",
+          icon: Check,
+          dotColor: "border-l-green-500",
+        };
       case "denied":
-        return "bg-red-100 text-red-700";
+        return {
+          label: "Rechazada",
+          color: "bg-red-50 border-red-200",
+          textColor: "text-red-700",
+          bgIcon: "bg-red-100",
+          icon: X,
+          dotColor: "border-l-red-500",
+        };
       default:
-        return "bg-yellow-100 text-yellow-700";
-    }
-  };
-
-  const getStatusLabel = (status?: string) => {
-    switch (status) {
-      case "accepted":
-        return "Aceptada";
-      case "denied":
-        return "Rechazada";
-      default:
-        return "Pendiente";
+        return {
+          label: "Pendiente",
+          color: "bg-yellow-50 border-yellow-200",
+          textColor: "text-yellow-700",
+          bgIcon: "bg-yellow-100",
+          icon: Clock,
+          dotColor: "border-l-yellow-500",
+        };
     }
   };
 
@@ -147,11 +159,19 @@ function AlmaceneroContent() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Gestión de Órdenes de Medicamentos</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-accent to-accent/70 bg-clip-text text-transparent">
+              Gestión de Órdenes de Medicamentos
+            </h1>
+            <p className="text-muted-foreground mt-2">
               Revisar y procesar solicitudes de medicamentos de los departamentos
+            </p>
+          </div>
+          <div className="text-right hidden md:block">
+            <p className="text-sm text-muted-foreground">Última actualización</p>
+            <p className="font-semibold text-accent">
+              {new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
             </p>
           </div>
         </div>
@@ -178,27 +198,34 @@ function AlmaceneroContent() {
           />
           <StatCard
             title="Rechazadas"
-            value={stats.rejected}
+            value={stats.denied}
             icon={X}
             description="No aprobadas"
           />
         </div>
 
         {/* Filters */}
-        <div className="bg-card rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Filtros</h2>
+        <div className="bg-gradient-to-r from-accent/5 to-accent/10 rounded-lg p-6 border border-accent/20">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Search className="h-5 w-5 text-accent" />
+            Filtros y Búsqueda
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input
-              placeholder="Buscar por departamento o ID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por departamento o ID..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10 border-accent/20"
+              />
+            </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
+              <SelectTrigger className="border-accent/20">
                 <SelectValue placeholder="Filtrar por estado" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="all">Todos los estados</SelectItem>
                 <SelectItem value="pending">Pendiente</SelectItem>
                 <SelectItem value="accepted">Aceptada</SelectItem>
                 <SelectItem value="denied">Rechazada</SelectItem>
@@ -207,190 +234,285 @@ function AlmaceneroContent() {
           </div>
         </div>
 
-        {/* Medication Orders List */}
-        <div className="bg-card rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Órdenes de Medicamentos</h2>
+        {/* Orders List */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900">Órdenes de Medicamentos</h2>
+            <p className="text-sm text-muted-foreground">{filtered.length} resultados</p>
+          </div>
+
           {loading ? (
-            <p className="text-center text-muted-foreground py-8">Cargando...</p>
+            <Card>
+              <CardContent className="pt-12 pb-12 text-center">
+                <div className="h-12 w-12 border-4 border-accent/20 border-t-accent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Cargando órdenes...</p>
+              </CardContent>
+            </Card>
           ) : filtered.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No se encontraron órdenes</p>
+            <Card className="border-dashed">
+              <CardContent className="pt-12 pb-12 text-center">
+                <Package className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-600 font-medium">No hay órdenes registradas</p>
+                <p className="text-sm text-muted-foreground mt-1">Intenta ajustar los filtros</p>
+              </CardContent>
+            </Card>
           ) : (
             <div className="space-y-3">
-              {filtered.map((order) => (
-                <motion.div
-                  key={order.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <Card className="hover:shadow-lg transition-shadow">
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-3">
-                            <h3 className="font-semibold text-lg">
-                              {order.department?.name || "Departamento desconocido"}
-                            </h3>
-                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${getStatusColor(order.status)}`}>
-                              {getStatusLabel(order.status)}
-                            </span>
-                          </div>
+              {filtered.map((order, idx) => {
+                const config = getStatusConfig(order.status);
+                const Icon = config.icon;
 
-                          <div className="grid grid-cols-3 gap-4 text-sm text-muted-foreground mb-4">
-                            <div>
-                              <p className="text-xs uppercase tracking-wide font-semibold">ID Orden</p>
-                              <p className="font-mono text-gray-700">{order.id.slice(0, 8)}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs uppercase tracking-wide font-semibold">Medicamentos</p>
-                              <p className="text-gray-700">{order.items?.length || 0} items</p>
-                            </div>
-                            <div>
-                              <p className="text-xs uppercase tracking-wide font-semibold">Fecha</p>
-                              <p className="text-gray-700">
-                                {new Date(order.createdAt).toLocaleDateString("es-ES")}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Order Items */}
-                          {order.items && order.items.length > 0 && (
-                            <div className="bg-blue-50 rounded-lg p-3 mb-4">
-                              <p className="text-sm font-semibold text-blue-900 mb-2">
-                                Items solicitados:
-                              </p>
-                              <div className="space-y-1">
-                                {order.items.map((item, index) => {
-                                  const medName = item.medication?.name || "Medicamento desconocido";
-                                  const medUnit = item.medication?.unit || "unidades";
-                                  return (
-                                    <div key={index} className="text-sm text-blue-800">
-                                      <span className="font-medium">{medName}</span>
-                                      {" - "}
-                                      <span>
-                                        {item.quantity} {medUnit}
-                                      </span>
-                                    </div>
-                                  );
-                                })}
+                return (
+                  <motion.div
+                    key={order.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                  >
+                    <Card
+                      className={`border-l-4 ${config.dotColor} hover:shadow-lg transition-all duration-300 ${config.color}`}
+                    >
+                      <CardContent className="pt-6">
+                        <div className="flex items-start justify-between gap-4">
+                          {/* Left Section - Order Info */}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div
+                                className={`h-10 w-10 rounded-lg ${config.bgIcon} flex items-center justify-center flex-shrink-0`}
+                              >
+                                <Icon className={`h-5 w-5 ${config.textColor}`} />
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-lg text-gray-900">
+                                  {order.department?.name || "Departamento desconocido"}
+                                </h3>
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs font-semibold ${config.textColor} ${config.color} border inline-block mt-1`}
+                                >
+                                  {config.label}
+                                </span>
                               </div>
                             </div>
-                          )}
-                        </div>
 
-                        {/* Action Buttons */}
-                        {!order.status || order.status === "pending" ? (
-                          <div className="flex flex-col gap-2 ml-4">
-                            <Button
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
-                              onClick={() => {
-                                setSelectedOrder(order);
-                                setIsAcceptModalOpen(true);
-                              }}
-                            >
-                              <Check className="h-4 w-4" />
-                              Aceptar
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              className="flex items-center gap-2"
-                              onClick={() => {
-                                setSelectedOrder(order);
-                                setIsRejectModalOpen(true);
-                              }}
-                            >
-                              <X className="h-4 w-4" />
-                              Rechazar
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="text-sm text-muted-foreground ml-4">
-                            {order.status === "accepted" ? (
-                              <span className="text-green-600 font-semibold">✓ Procesada</span>
-                            ) : (
-                              <span className="text-red-600 font-semibold">✗ Rechazada</span>
+                            {/* Order Details Grid */}
+                            <div className="grid grid-cols-3 gap-4 py-3 border-t border-b mb-3">
+                              <div>
+                                <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
+                                  ID Orden
+                                </p>
+                                <p className="font-mono text-sm text-gray-700 mt-1">
+                                  {order.id.slice(0, 8)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
+                                  Medicamentos
+                                </p>
+                                <p className="text-sm text-gray-700 font-semibold mt-1">
+                                  {order.items?.length || 0} items
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
+                                  Fecha
+                                </p>
+                                <p className="text-sm text-gray-700 mt-1">
+                                  {new Date(order.createdAt).toLocaleDateString("es-ES")}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Items Summary */}
+                            {order.items && order.items.length > 0 && (
+                              <div className={`p-3 rounded-lg border ${config.color}`}>
+                                <p className={`text-xs uppercase tracking-wide font-semibold ${config.textColor} mb-2`}>
+                                  Medicamentos solicitados ({order.items.length})
+                                </p>
+                                <div className="space-y-1 max-h-24 overflow-y-auto">
+                                  {order.items.map((item, itemIdx) => (
+                                    <div key={itemIdx} className={`flex justify-between text-xs ${config.textColor}`}>
+                                      <span className="font-medium">
+                                        {item.medication?.name || "Medicamento"}
+                                      </span>
+                                      <span className="font-semibold">
+                                        {item.quantity} {item.medication?.unit || "unidades"}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
                             )}
                           </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+
+                          {/* Action Buttons */}
+                          <div className="flex flex-col gap-2 flex-shrink-0">
+                            <Button
+                              variant="outline"
+                              className="border-accent/20 hover:bg-accent/5"
+                              onClick={() => {
+                                setSelectedOrder(order);
+                                setIsDetailsModalOpen(true);
+                              }}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              Detalles
+                            </Button>
+                            {!order.status || order.status === "pending" ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                                  onClick={() => {
+                                    setSelectedOrder(order);
+                                    setIsAcceptModalOpen(true);
+                                  }}
+                                >
+                                  <Check className="h-4 w-4" />
+                                  Aceptar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  className="flex items-center gap-2"
+                                  onClick={() => {
+                                    setSelectedOrder(order);
+                                    setIsRejectModalOpen(true);
+                                  }}
+                                >
+                                  <X className="h-4 w-4" />
+                                  Rechazar
+                                </Button>
+                              </>
+                            ) : (
+                              <div className="text-sm text-muted-foreground text-center py-2">
+                                {order.status === "accepted" ? (
+                                  <span className="text-green-600 font-semibold">✓ Procesada</span>
+                                ) : (
+                                  <span className="text-red-600 font-semibold">✗ Rechazada</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
             </div>
           )}
         </div>
+
+        {/* Info Footer */}
+        <Card className="bg-gradient-to-r from-accent/5 to-accent/10 border-accent/20">
+          <CardContent className="pt-6">
+            <p className="text-sm text-gray-700">
+              <span className="font-semibold text-accent">📋 Información:</span> Revisa cuidadosamente cada orden antes de aceptar. Las órdenes aceptadas crearán automáticamente registros de distribución.
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* ACCEPT ORDER MODAL */}
-      {isAcceptModalOpen && selectedOrder && (
+      {/* DETAILS MODAL */}
+      {isDetailsModalOpen && selectedOrder && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg w-full max-w-2xl my-8 shadow-2xl">
+          <Card className="w-full max-w-2xl my-8 shadow-2xl">
             {/* Header */}
-            <div className="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4 rounded-t-lg">
+            <div className="bg-gradient-to-r from-accent to-accent/70 px-6 py-6 rounded-t-lg">
               <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <Check className="h-6 w-6" />
-                Aceptar Orden de Medicamentos
+                <Package className="h-6 w-6" />
+                Detalles de Orden
               </h2>
-              <p className="text-green-100 text-sm mt-1">
-                Confirme la entrega y cree el registro de distribución
+              <p className="text-white/80 text-sm mt-1">
+                Información completa de la solicitud de medicamentos
               </p>
             </div>
 
             {/* Content */}
             <div className="p-6 space-y-6">
-              {/* Order Info */}
-              <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
+              {/* Order Info Card */}
+              <Card className="bg-gradient-to-br from-accent/5 to-accent/10 border-accent/20">
                 <CardContent className="pt-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-green-600 font-semibold">
-                        Departamento
+                      <p className="text-xs uppercase tracking-wide text-accent font-semibold">
+                        Departamento Solicitante
                       </p>
-                      <p className="text-lg font-semibold text-green-900 mt-1">
+                      <p className="text-lg font-bold text-gray-900 mt-2">
                         {selectedOrder.department?.name}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-green-600 font-semibold">
-                        Total Items
+                      <p className="text-xs uppercase tracking-wide text-accent font-semibold">
+                        Estado
                       </p>
-                      <p className="text-lg font-semibold text-green-900 mt-1">
-                        {selectedOrder.items?.length || 0}
+                      <p className={`text-lg font-bold mt-2 ${getStatusConfig(selectedOrder.status).textColor}`}>
+                        {getStatusConfig(selectedOrder.status).label}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-accent font-semibold">
+                        ID Orden
+                      </p>
+                      <p className="font-mono text-sm text-gray-700 mt-2">{selectedOrder.id}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-accent font-semibold">
+                        Fecha de Solicitud
+                      </p>
+                      <p className="text-sm text-gray-700 mt-2">
+                        {new Date(selectedOrder.createdAt).toLocaleDateString("es-ES", {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
                       </p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Items Review */}
+              {/* Items List */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Medicamentos a entregar:</h3>
-                <div className="space-y-2">
-                  {selectedOrder.items?.map((item, index) => (
-                    <div key={index} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {item.medication?.name || "Medicamento desconocido"}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            Código: {item.medication?.code || "N/A"}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-semibold text-gray-900">
-                            {item.quantity}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {item.medication?.unit || "unidades"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <h3 className="text-lg font-semibold mb-4">
+                  Medicamentos Solicitados ({selectedOrder.items?.length || 0})
+                </h3>
+                {!selectedOrder.items || selectedOrder.items.length === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="pt-8 pb-8 text-center">
+                      <Package className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600">Sin medicamentos en esta orden</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {selectedOrder.items.map((item, idx) => (
+                      <Card key={idx} className="hover:shadow-md transition-shadow">
+                        <CardContent className="pt-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <p className="font-semibold text-gray-900">
+                                {item.medication?.name || "Medicamento"}
+                              </p>
+                              {item.medication?.code && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Código: {item.medication.code}
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-right flex-shrink-0 ml-4 p-3 bg-accent/10 rounded-lg">
+                              <p className="text-lg font-bold text-accent">{item.quantity}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {item.medication?.unit || "unidades"}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -398,7 +520,91 @@ function AlmaceneroContent() {
             <div className="bg-gray-50 px-6 py-4 rounded-b-lg border-t border-gray-200 flex gap-3 justify-end">
               <Button
                 variant="outline"
-                className="px-6 h-11 font-semibold"
+                onClick={() => {
+                  setIsDetailsModalOpen(false);
+                  setSelectedOrder(null);
+                }}
+              >
+                Cerrar
+              </Button>
+              {!selectedOrder.status || selectedOrder.status === "pending" ? (
+                <>
+                  <Button
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => {
+                      setIsDetailsModalOpen(false);
+                      setIsAcceptModalOpen(true);
+                    }}
+                  >
+                    <Check className="mr-2 h-4 w-4" />
+                    Aceptar Orden
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      setIsDetailsModalOpen(false);
+                      setIsRejectModalOpen(true);
+                    }}
+                  >
+                    <X className="mr-2 h-4 w-4" />
+                    Rechazar Orden
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ACCEPT ORDER MODAL */}
+      {isAcceptModalOpen && selectedOrder && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg w-full max-w-md my-8 shadow-2xl">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-green-600 to-green-700 px-6 py-6 rounded-t-lg">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <Check className="h-6 w-6" />
+                Aceptar Orden
+              </h2>
+              <p className="text-green-100 text-sm mt-1">
+                Confirme la aceptación de la orden de medicamentos
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              <Card className="bg-green-50 border-green-200">
+                <CardContent className="pt-6">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-green-600 font-semibold">
+                        Departamento
+                      </p>
+                      <p className="font-semibold text-green-900 mt-1">
+                        {selectedOrder.department?.name}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-green-600 font-semibold">
+                        Total de Items
+                      </p>
+                      <p className="font-semibold text-green-900 mt-1">
+                        {selectedOrder.items?.length || 0} medicamentos
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <p className="text-sm text-gray-700">
+                ¿Está seguro de que desea <span className="font-semibold">aceptar esta orden</span>? Se creará automáticamente un registro de distribución.
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 px-6 py-4 rounded-b-lg border-t border-gray-200 flex gap-3 justify-end">
+              <Button
+                variant="outline"
                 onClick={() => {
                   setIsAcceptModalOpen(false);
                   setSelectedOrder(null);
@@ -408,19 +614,19 @@ function AlmaceneroContent() {
                 Cancelar
               </Button>
               <Button
-                className="px-8 h-11 font-semibold bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white flex items-center gap-2"
+                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
                 onClick={acceptOrder}
                 disabled={isProcessingOrder}
               >
                 {isProcessingOrder ? (
                   <>
-                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                     Procesando...
                   </>
                 ) : (
                   <>
-                    <Check className="h-4 w-4" />
-                    Aceptar y Entregar
+                    <Check className="mr-2 h-4 w-4" />
+                    Aceptar Orden
                   </>
                 )}
               </Button>
@@ -432,33 +638,46 @@ function AlmaceneroContent() {
       {/* REJECT ORDER MODAL */}
       {isRejectModalOpen && selectedOrder && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex items-center gap-3 mb-4">
-              <AlertCircle className="h-6 w-6 text-red-600" />
-              <h2 className="text-xl font-semibold text-red-600">Rechazar Orden</h2>
+          <div className="bg-white rounded-lg w-full max-w-md shadow-2xl">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-600 to-red-700 px-6 py-6 rounded-t-lg">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <X className="h-6 w-6" />
+                Rechazar Orden
+              </h2>
+              <p className="text-red-100 text-sm mt-1">
+                Indique el motivo del rechazo (opcional)
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              ¿Está seguro de que desea rechazar esta orden del departamento{" "}
-              <span className="font-semibold">{selectedOrder.department?.name}</span>?
-            </p>
-            <textarea
-              className="w-full p-2 border rounded-md mb-4 min-h-20 focus:outline-none focus:ring-2 focus:ring-red-600"
-              placeholder="Motivo del rechazo (opcional)..."
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-            />
-            <div className="flex gap-2">
-              <Button
-                variant="destructive"
-                className="flex-1"
-                onClick={rejectOrder}
-                disabled={isProcessingOrder}
-              >
-                {isProcessingOrder ? "Rechazando..." : "Rechazar"}
-              </Button>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              <Card className="bg-red-50 border-red-200">
+                <CardContent className="pt-6">
+                  <p className="text-sm text-red-900">
+                    Se rechazará la orden del departamento{" "}
+                    <span className="font-semibold">{selectedOrder.department?.name}</span>
+                  </p>
+                </CardContent>
+              </Card>
+
+              <div>
+                <label className="text-sm font-semibold text-gray-700 block mb-2">
+                  Motivo del rechazo (opcional)
+                </label>
+                <textarea
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 min-h-24 resize-none"
+                  placeholder="Explain why this order is being rejected..."
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 px-6 py-4 rounded-b-lg border-t border-gray-200 flex gap-3 justify-end">
               <Button
                 variant="outline"
-                className="flex-1"
                 onClick={() => {
                   setIsRejectModalOpen(false);
                   setSelectedOrder(null);
@@ -467,6 +686,23 @@ function AlmaceneroContent() {
                 disabled={isProcessingOrder}
               >
                 Cancelar
+              </Button>
+              <Button
+                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white"
+                onClick={rejectOrder}
+                disabled={isProcessingOrder}
+              >
+                {isProcessingOrder ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <X className="mr-2 h-4 w-4" />
+                    Rechazar Orden
+                  </>
+                )}
               </Button>
             </div>
           </div>
