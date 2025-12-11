@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectTrigger, SelectItem, SelectContent, SelectValue } from "@/components/ui/select"
-import { Package, TrendingUp, Clock, CheckCircle, AlertCircle, Search, Plus, Pill } from "lucide-react"
+import { Package, TrendingUp, Clock, CheckCircle, AlertCircle, Search, Plus, Pill, MessageSquare } from "lucide-react"
 import { StatCard } from "@/components/stat-card"
 
 interface DeliveryItem {
@@ -35,6 +35,7 @@ interface MedicationDelivery {
   items?: DeliveryItem[]
   status?: "pending" | "delivered" | "canceled"
   createdAt: Date
+  comment?: string
 }
 
 function AlmacenHeadDepartmentContent() {
@@ -44,6 +45,9 @@ function AlmacenHeadDepartmentContent() {
   const [search, setSearch] = useState("")
   const [selectedDelivery, setSelectedDelivery] = useState<MedicationDelivery | null>(null)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [updateStatus, setUpdateStatus] = useState<"pending" | "delivered" | "canceled" | "">("")
+  const [comment, setComment] = useState("")
   const { toast } = useToast()
 
   useEffect(() => {
@@ -63,6 +67,40 @@ function AlmacenHeadDepartmentContent() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleStatusUpdate = async () => {
+    if (!selectedDelivery || !updateStatus) return
+
+    try {
+      setIsUpdating(true)
+      await api.medicationDeliveries.updateStatus(
+        selectedDelivery.id,
+        updateStatus as "pending" | "delivered" | "canceled",
+        comment || undefined
+      )
+
+      toast({
+        title: "Éxito",
+        description: "Estado de entrega actualizado correctamente",
+        variant: "default",
+      })
+
+      // Reload deliveries
+      await loadDeliveries()
+      setIsDetailsModalOpen(false)
+      setUpdateStatus("")
+      setComment("")
+      setSelectedDelivery(null)
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar el estado",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUpdating(false)
     }
   }
 
@@ -266,6 +304,8 @@ function AlmacenHeadDepartmentContent() {
                           className="flex-shrink-0 border-accent/20 hover:bg-accent/5"
                           onClick={() => {
                             setSelectedDelivery(delivery)
+                            setUpdateStatus("")
+                            setComment("")
                             setIsDetailsModalOpen(true)
                           }}
                         >
@@ -315,7 +355,7 @@ function AlmacenHeadDepartmentContent() {
                       <p className="text-lg font-bold text-gray-900 mt-2">{selectedDelivery.department?.name}</p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-accent font-semibold">Estado</p>
+                      <p className="text-xs uppercase tracking-wide text-accent font-semibold">Estado Actual</p>
                       <p className={`text-lg font-bold mt-2 ${getStatusConfig(selectedDelivery.status).textColor}`}>
                         {getStatusConfig(selectedDelivery.status).label}
                       </p>
@@ -374,19 +414,70 @@ function AlmacenHeadDepartmentContent() {
                   </div>
                 )}
               </div>
+
+              {/* Status Update Section */}
+              <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+                <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-accent" />
+                  Actualizar Estado
+                </h3>
+
+                <Select value={updateStatus} onValueChange={(value) => setUpdateStatus(value as "pending" | "delivered" | "canceled" | "")}>
+                  <SelectTrigger className="border-accent/20">
+                    <SelectValue placeholder="Selecciona nuevo estado..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pendiente</SelectItem>
+                    <SelectItem value="delivered">Entregada</SelectItem>
+                    <SelectItem value="canceled">Cancelada</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 block mb-2">
+                    Comentario (opcional)
+                  </label>
+                  <textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="Agregar observaciones sobre esta entrega..."
+                    className="w-full px-3 py-2 border border-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm resize-none"
+                    rows={3}
+                  />
+                </div>
+
+                {selectedDelivery.comment && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs uppercase tracking-wide text-blue-600 font-semibold mb-1">Comentario anterior</p>
+                    <p className="text-sm text-blue-900">{selectedDelivery.comment}</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Footer */}
-            <div className="bg-gray-50 px-6 py-4 rounded-b-lg border-t flex justify-end">
+            <div className="bg-gray-50 px-6 py-4 rounded-b-lg border-t flex justify-end gap-2">
               <Button
-                className="bg-accent hover:bg-accent/90 text-white"
+                variant="outline"
                 onClick={() => {
                   setIsDetailsModalOpen(false)
                   setSelectedDelivery(null)
+                  setUpdateStatus("")
+                  setComment("")
                 }}
+                disabled={isUpdating}
               >
-                Cerrar
+                Cancelar
               </Button>
+              {updateStatus && (
+                <Button
+                  className="bg-accent hover:bg-accent/90 text-white"
+                  onClick={handleStatusUpdate}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? "Actualizando..." : "Actualizar Estado"}
+                </Button>
+              )}
             </div>
           </Card>
         </div>

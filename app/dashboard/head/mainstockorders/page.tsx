@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectItem, SelectContent, SelectValue } from "@/components/ui/select";
 import { motion } from "framer-motion";
-import { Check, X, Package, Clock, AlertCircle, Eye, TrendingUp, Search } from "lucide-react";
+import { Check, X, Package, Clock, AlertCircle, Eye, TrendingUp, Search, MessageSquare } from "lucide-react";
 import { api } from "@/lib/api";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { StatCard } from "@/components/stat-card";
@@ -34,7 +34,9 @@ interface MedicationOrder {
   };
   items?: OrderItem[];
   status?: "pending" | "accepted" | "denied";
-  createdAt: Date;
+  requestedAt: Date;
+  respondedAt?: Date;
+  comment?: string;
 }
 
 function AlmaceneroContent() {
@@ -87,7 +89,10 @@ function AlmaceneroContent() {
 
     try {
       setIsProcessingOrder(true);
-      await api.medicationOrders.respond(selectedOrder.id, { accept: false });
+      await api.medicationOrders.respond(selectedOrder.id, {
+        accept: false,
+        comment: rejectionReason || undefined,
+      });
 
       await fetchMedicationOrders();
       setIsRejectModalOpen(false);
@@ -317,7 +322,7 @@ function AlmaceneroContent() {
                                   Fecha
                                 </p>
                                 <p className="text-sm text-gray-700 mt-1">
-                                  {new Date(order.createdAt).toLocaleDateString("es-ES")}
+                                  {new Date(order.requestedAt).toLocaleDateString("es-ES")}
                                 </p>
                               </div>
                             </div>
@@ -340,6 +345,17 @@ function AlmaceneroContent() {
                                     </div>
                                   ))}
                                 </div>
+                              </div>
+                            )}
+
+                            {/* Display comment if order is denied */}
+                            {order.status === "denied" && order.comment && (
+                              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                <p className="text-xs uppercase tracking-wide text-red-600 font-semibold mb-1 flex items-center gap-1">
+                                  <MessageSquare className="h-3 w-3" />
+                                  Motivo del rechazo
+                                </p>
+                                <p className="text-sm text-red-900">{order.comment}</p>
                               </div>
                             )}
                           </div>
@@ -461,7 +477,7 @@ function AlmaceneroContent() {
                         Fecha de Solicitud
                       </p>
                       <p className="text-sm text-gray-700 mt-2">
-                        {new Date(selectedOrder.createdAt).toLocaleDateString("es-ES", {
+                        {new Date(selectedOrder.requestedAt).toLocaleDateString("es-ES", {
                           weekday: "long",
                           year: "numeric",
                           month: "long",
@@ -514,6 +530,19 @@ function AlmaceneroContent() {
                   </div>
                 )}
               </div>
+
+              {/* Display comment if order is denied */}
+              {selectedOrder.status === "denied" && selectedOrder.comment && (
+                <Card className="bg-red-50 border-red-200">
+                  <CardContent className="pt-6">
+                    <p className="text-xs uppercase tracking-wide text-red-600 font-semibold mb-2 flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      Motivo del rechazo
+                    </p>
+                    <p className="text-sm text-red-900">{selectedOrder.comment}</p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             {/* Footer */}
@@ -662,12 +691,13 @@ function AlmaceneroContent() {
               </Card>
 
               <div>
-                <label className="text-sm font-semibold text-gray-700 block mb-2">
+                <label className="text-sm font-semibold text-gray-700 block mb-2 flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
                   Motivo del rechazo (opcional)
                 </label>
                 <textarea
                   className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 min-h-24 resize-none"
-                  placeholder="Explain why this order is being rejected..."
+                  placeholder="Explica por qué se rechaza esta orden..."
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
                 />

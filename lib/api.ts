@@ -334,19 +334,25 @@ export const api = {
 
   // ---------- Medication Deliveries -----------
   medicationDeliveries: {
-    create: async (data: { departmentId: string; items: any[] }) =>
-      fetchWithAuth("/medication-deliveries", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
+  create: async (data: { departmentId: string; items: any[] }) =>
+    fetchWithAuth("/medication-deliveries", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
-    getAll: async () => fetchWithAuth("/medication-deliveries"),
+  getAll: async () => fetchWithAuth("/medication-deliveries"),
 
-    getById: async (id: string) => fetchWithAuth(`/medication-deliveries/${id}`),
+  getById: async (id: string) => fetchWithAuth(`/medication-deliveries/${id}`),
 
-    getByDepartment: async (departmentId: string) =>
-      fetchWithAuth(`/medication-deliveries/department/${departmentId}`),
-  },
+  getByDepartment: async (departmentId: string) =>
+    fetchWithAuth(`/medication-deliveries/department/${departmentId}`),
+
+  updateStatus: async (id: string, status: "pending" | "delivered" | "canceled", comment?: string) =>
+    fetchWithAuth(`/medication-deliveries/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status, comment }),
+    }),
+},
   // ---------- Medication Delivery Items -----------
   medicationDeliveryItems: {
     getAll: async () => fetchWithAuth("/medication-delivery-items"),
@@ -386,7 +392,7 @@ export const api = {
         body: JSON.stringify(data),
       }),
 
-    respond: async (id: string, data: { accept: boolean }) =>
+    respond: async (id: string, data: { accept: boolean; comment?: string }) =>
       fetchWithAuth(`/medication-orders/respond/${id}`, {
         method: "POST",
         body: JSON.stringify(data),
@@ -405,6 +411,6 @@ export const api = {
       }),
 
     getByPatient: async (patientId: string) =>
-      fetchWithAuth(`/clinic-history/by-patient/${patientId}`),  
+      fetchWithAuth(`/clinic-history/by-patient/${patientId}`),
   },
 }
