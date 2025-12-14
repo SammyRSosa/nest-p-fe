@@ -16,7 +16,7 @@ interface Consultation {
   id: string
   status: "pending" | "closed" | "canceled"
   diagnosis: string | null
-  createdAt: string
+  createdAt: Date
 }
 
 interface ClinicHistory {
@@ -25,24 +25,24 @@ interface ClinicHistory {
     id: string
     firstName: string
     lastName: string
-    idNumber: string
+    idNumber: number
     email: string
-    phone: string
-    dateOfBirth: string
+    phone: number
+    dateOfBirth: Date
   }
   consultations: Consultation[]
   notes: string | null
-  createdAt: string
+  createdAt: Date
 }
 
 interface Patient {
   id: string
   firstName: string
   lastName: string
-  idNumber: string
+  idNumber: number
   email: string
-  phone: string
-  dateOfBirth: string
+  phone: number
+  dateOfBirth: Date
 }
 
 function HeadClinicHistoryContent() {
@@ -147,7 +147,7 @@ function HeadClinicHistoryContent() {
 
   const filteredPatients = patients.filter((p) =>
     `${p.firstName} ${p.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
-    p.idNumber.includes(search)
+    p.idNumber.toString().includes(search)
   )
 
   const stats = clinicHistory && clinicHistory.consultations && Array.isArray(clinicHistory.consultations)
@@ -410,7 +410,7 @@ function HeadClinicHistoryContent() {
 
 export default function HeadClinicHistoryPage() {
   return (
-    <ProtectedRoute allowedRoles={[UserRole.HEAD_OF_DEPARTMENT]}>
+    <ProtectedRoute allowedRoles={[UserRole.HEAD_OF_DEPARTMENT, UserRole.DOCTOR]}>
       <HeadClinicHistoryContent />
     </ProtectedRoute>
   )
