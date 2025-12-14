@@ -15,7 +15,7 @@ interface FormData {
   idNumber: string;
   email: string;
   phone: string;
-  dateOfBirth: Date | null;
+  dateOfBirth: string; // ISO date string (YYYY-MM-DD)
 }
 
 export function PatientForm({ initialData, onSubmit, onCancel }: PatientFormProps) {
@@ -25,21 +25,38 @@ export function PatientForm({ initialData, onSubmit, onCancel }: PatientFormProp
     idNumber: "",
     email: "",
     phone: "",
-    dateOfBirth: null,
+    dateOfBirth: "",
   })
 
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData)
+      setFormData({
+        firstName: initialData.firstName || "",
+        lastName: initialData.lastName || "",
+        idNumber: initialData.idNumber != null ? String(initialData.idNumber) : "",
+        email: initialData.email || "",
+        phone: initialData.phone != null ? String(initialData.phone) : "",
+        dateOfBirth: initialData.dateOfBirth
+          ? new Date(initialData.dateOfBirth).toISOString().split("T")[0]
+          : "",
+      })
     }
   }, [initialData])
 
-  const handleChange = (field: string, value: string) =>
-    setFormData((prev) => ({ ...prev, [field]: value }))
+  const handleChange = (field: keyof FormData, value: string) =>
+    setFormData((prev) => ({ ...(prev as any), [field]: value } as FormData))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await onSubmit(formData)
+    // Convert numeric/date fields back to expected types
+    const submitData = {
+      ...formData,
+      idNumber: formData.idNumber ? Number(formData.idNumber) : null,
+      phone: formData.phone ? Number(formData.phone) : null,
+      dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth) : null,
+    }
+
+    await onSubmit(submitData)
   }
 
   return (
@@ -61,7 +78,7 @@ export function PatientForm({ initialData, onSubmit, onCancel }: PatientFormProp
         className="input w-full"
       />
       <input
-        type="text"
+        type="number"
         placeholder="ID"
         value={formData.idNumber}
         onChange={(e) => handleChange("idNumber", e.target.value)}
@@ -77,7 +94,7 @@ export function PatientForm({ initialData, onSubmit, onCancel }: PatientFormProp
         className="input w-full"
       />
       <input
-        type="tel"
+        type="number"
         placeholder="Telefono"
         value={formData.phone}
         onChange={(e) => handleChange("phone", e.target.value)}

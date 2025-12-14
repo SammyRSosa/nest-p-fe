@@ -48,8 +48,8 @@ export interface Department {
   workers: User[]
   medicationStock: MedicationStock[]
   isActive: boolean
-  createdAt: string
-  updatedAt: string
+  createdAt: Date
+  updatedAt: Date
   stocks?: Stock[] // ✅ AGREGADO para compatibilidad con backend
 }
 

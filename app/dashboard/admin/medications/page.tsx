@@ -24,7 +24,7 @@ interface Medication {
   code?: string
   description?: string
   unit?: string
-  createdAt?: string
+  createdAt?: Date
 }
 
 function MedicationsPageContent() {
