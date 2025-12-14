@@ -31,10 +31,10 @@ interface UserData {
     id: string
     firstName: string
     lastName: string
-    idNumber: string
+    idNumber: number
     email: string
-    phone: string
-    dateOfBirth: string
+    phone: number
+    dateOfBirth: Date
   } | null
 }
 

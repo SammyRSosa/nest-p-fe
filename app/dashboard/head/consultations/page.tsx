@@ -32,7 +32,7 @@ interface Consultation {
   diagnosis?: string | null;
   type?: "programmed" | "emergency";
   scheduledAt?: Date;
-  createdAt: string;
+  createdAt: Date;
   internalRemission?: any;
   externalRemission?: any;
   prescriptions?: Prescription[];
@@ -40,10 +40,10 @@ interface Consultation {
     id: string;
     firstName: string;
     lastName: string;
-    idNumber?: string;
+    idNumber?: number;
     email?: string;
-    phone?: string;
-    dateOfBirth?: string;
+    phone?: number;
+    dateOfBirth?: Date;
   };
   mainDoctor: {
     id: string;

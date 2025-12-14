@@ -13,7 +13,7 @@ interface Consultation {
   id: string
   status: "pending" | "closed" | "canceled"
   diagnosis: string | null
-  createdAt: string
+  createdAt: Date
 }
 
 interface ClinicHistory {
@@ -22,14 +22,14 @@ interface ClinicHistory {
     id: string
     firstName: string
     lastName: string
-    idNumber: string
+    idNumber: number
     email: string
-    phone: string
-    dateOfBirth: string
+    phone: number
+    dateOfBirth: Date
   }
   consultations: Consultation[]
   notes: string | null
-  createdAt: string
+  createdAt: Date
 }
 
 function ClinicHistoriesDashboardContent() {

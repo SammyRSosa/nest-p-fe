@@ -12,9 +12,9 @@ interface PatientFormProps {
 interface FormData {
   firstName: string;
   lastName: string;
-  idNumber: string;
+  idNumber: number|null;
   email: string;
-  phone: string;
+  phone: number|null;
   dateOfBirth: Date | null;
 }
 
@@ -22,9 +22,9 @@ export function PatientForm({ initialData, onSubmit, onCancel }: PatientFormProp
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
-    idNumber: "",
+    idNumber: null,
     email: "",
-    phone: "",
+    phone: null,
     dateOfBirth: null,
   })
 
@@ -61,7 +61,7 @@ export function PatientForm({ initialData, onSubmit, onCancel }: PatientFormProp
         className="input w-full"
       />
       <input
-        type="text"
+        type="number"
         placeholder="ID"
         value={formData.idNumber}
         onChange={(e) => handleChange("idNumber", e.target.value)}
@@ -77,7 +77,7 @@ export function PatientForm({ initialData, onSubmit, onCancel }: PatientFormProp
         className="input w-full"
       />
       <input
-        type="tel"
+        type="number"
         placeholder="Telefono"
         value={formData.phone}
         onChange={(e) => handleChange("phone", e.target.value)}
