@@ -38,7 +38,7 @@ const navigationByRole: Record<UserRole, NavItem[]> = {
     { label: "Remisiones", href: "/dashboard/head/remissions", icon: <Users className="h-5 w-5" /> },
     { label: "Pedidos de Medicamentos", href: "/dashboard/head/medication-orders", icon: <Pill className="h-5 w-5" /> },
     { label: "Stock del Departamento", href: "/dashboard/head/stock", icon: <Pill className="h-5 w-5" /> },
-    { label: "Envíos a Departamentos", href: "/dashboard/head/deliveries", icon: <Truck className="h-5 w-5" /> },
+    { label: "Envíos al Departamento", href: "/dashboard/head/deliveries", icon: <Truck className="h-5 w-5" /> },
     { label: "Órdenes de Stock Principal", href: "/dashboard/head/mainstockorders", icon: <Building2 className="h-5 w-5" /> },
     { label: "Entregas", href: "/dashboard/head/mainstockdeliveries", icon: <Truck className="h-5 w-5" /> },
   ],
@@ -91,11 +91,11 @@ useEffect(() => {
 
   // Si es HEAD_OF_DEPARTMENT y NO es del departamento Almacén → ocultar varias opciones
   if (role === UserRole.HEAD_OF_DEPARTMENT && isAlmacenHOD) {
-    const labelsToShow = ["Pacientes", "Consultas", "Remisiones", "Pedidos de Medicamentos", "Envíos a Departamentos","Stock del Departamento"]
+    const labelsToShow = ["Pacientes", "Consultas", "Remisiones", "Pedidos de Medicamentos", "Envíos al Departamento","Stock del Departamento"]
     navItems = navItems.filter(item => labelsToShow.includes(item.label))
   }else if (role === UserRole.HEAD_OF_DEPARTMENT && !isAlmacenHOD) {
     // Si es HEAD_OF_DEPARTMENT y es del departamento Almacén → mostrar solo ciertas opciones
-    const labelsToShow = ["Órdenes de Stock Principal", "Entregas","Stock del Departamento"]
+    const labelsToShow = ["Órdenes de Stock Principal", "Entregas","Stock del Departamento", "Envíos al Departamento"]
     navItems = navItems.filter(item => labelsToShow.includes(item.label))
   }
 
