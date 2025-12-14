@@ -175,14 +175,23 @@ export default function ReportsGenerator() {
 
         const tableData = reportData.data.slice(0, 50).map((item: any) => {
           switch (reportType) {
-            case "consultations":
+            case "consultations": {
+              const patient =
+                item.patient ||
+                item.internalRemission?.patient ||
+                item.externalRemission?.patient ||
+                item.programmedConsultation?.internalRemission?.patient ||
+                item.programmedConsultation?.externalRemission?.patient;
+              
+              console.log(item)
               return [
-                `${item.patient?.firstName || ""} ${item.patient?.lastName || ""}`.substring(0, 20),
+                `${patient?.firstName || "—"} ${patient?.lastName || ""}`.substring(0, 20),
                 `${item.mainDoctor?.firstName || ""} ${item.mainDoctor?.lastName || ""}`.substring(0, 15),
                 (item.department?.name || "").substring(0, 15),
                 getStatusLabel(item.status || ""),
                 new Date(item.createdAt).toLocaleDateString("es-ES"),
-              ]
+              ];
+            }
             case "medications":
               return [
                 (item.medication?.name || "").substring(0, 20),
@@ -461,7 +470,7 @@ export default function ReportsGenerator() {
                 <p className="text-gray-600 mb-6">
                   Generado: {new Date().toLocaleDateString("es-ES")}
                 </p>
-                
+
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold mb-2">Estadísticas</h3>
                   <p className="text-gray-700">Total de registros: {reportData.total || 0}</p>

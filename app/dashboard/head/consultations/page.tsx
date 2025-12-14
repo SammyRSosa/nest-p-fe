@@ -152,6 +152,7 @@ function HeadConsultationsContent() {
   const updateStatus = async (id: string, status: string): Promise<void> => {
     try {
       await api.consultations.updateStatus(id, status as "pending" | "closed" | "canceled");
+      
       fetchConsultations();
       setIsStatusModalOpen(false);
       setSelectedConsultation(null);
