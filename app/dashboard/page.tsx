@@ -23,7 +23,7 @@ export default function DashboardRedirect() {
       const roleRoutes: Record<UserRole, string> = {
         [UserRole.ADMIN]: "/dashboard/admin",
         [UserRole.HEAD_OF_DEPARTMENT]: "/dashboard/head/stock",
-        [UserRole.DOCTOR]: "/dashboard/doctor",
+        [UserRole.DOCTOR]: "/dashboard/head",
         [UserRole.NURSE]: "/dashboard/nurse",
         [UserRole.STAFF]: "/dashboard/staff",
         [UserRole.PATIENT]: "/dashboard/patient",

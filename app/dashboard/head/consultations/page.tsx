@@ -142,7 +142,7 @@ function HeadConsultationsContent() {
 
   const fetchRemissions = async () => {
     try {
-      const data = await api.remissions.getAll();
+      const data = await api.remissions.getOwn();
       setRemissions(data);
     } catch (error) {
       console.error(error);

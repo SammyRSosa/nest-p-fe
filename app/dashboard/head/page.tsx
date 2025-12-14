@@ -152,11 +152,11 @@ function HeadClinicHistoryContent() {
 
   const stats = clinicHistory && clinicHistory.consultations && Array.isArray(clinicHistory.consultations)
     ? {
-        total: clinicHistory.consultations.length,
-        closed: clinicHistory.consultations.filter((c) => c.status === "closed").length,
-        pending: clinicHistory.consultations.filter((c) => c.status === "pending").length,
-        canceled: clinicHistory.consultations.filter((c) => c.status === "canceled").length,
-      }
+      total: clinicHistory.consultations.length,
+      closed: clinicHistory.consultations.filter((c) => c.status === "closed").length,
+      pending: clinicHistory.consultations.filter((c) => c.status === "pending").length,
+      canceled: clinicHistory.consultations.filter((c) => c.status === "canceled").length,
+    }
     : { total: 0, closed: 0, pending: 0, canceled: 0 }
 
   return (
@@ -174,7 +174,7 @@ function HeadClinicHistoryContent() {
             <Card>
               <CardContent className="pt-6">
                 <h2 className="text-lg font-semibold mb-4">Pacientes</h2>
-                <Button 
+                <Button
                   className="w-full mb-4 bg-accent hover:bg-accent/90"
                   onClick={() => setIsModalOpen(true)}
                 >
@@ -207,11 +207,10 @@ function HeadClinicHistoryContent() {
                           setSelectedPatient(patient)
                           loadClinicHistory(patient.id)
                         }}
-                        className={`w-full text-left p-3 rounded-lg border transition-all ${
-                          selectedPatient?.id === patient.id
+                        className={`w-full text-left p-3 rounded-lg border transition-all ${selectedPatient?.id === patient.id
                             ? "bg-accent text-white border-accent"
                             : "bg-gray-50 border-gray-200 hover:border-accent hover:bg-accent/5"
-                        }`}
+                          }`}
                       >
                         <p className={`font-semibold text-sm ${selectedPatient?.id === patient.id ? "text-white" : "text-gray-900"}`}>
                           {patient.firstName} {patient.lastName}
@@ -410,7 +409,7 @@ function HeadClinicHistoryContent() {
 
 export default function HeadClinicHistoryPage() {
   return (
-    <ProtectedRoute allowedRoles={[UserRole.HEAD_OF_DEPARTMENT]}>
+    <ProtectedRoute allowedRoles={[UserRole.HEAD_OF_DEPARTMENT, UserRole.DOCTOR]}>
       <HeadClinicHistoryContent />
     </ProtectedRoute>
   )

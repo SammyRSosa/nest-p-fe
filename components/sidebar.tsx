@@ -45,6 +45,7 @@ const navigationByRole: Record<UserRole, NavItem[]> = {
   [UserRole.DOCTOR]: [
     { label: "Consultas", href: "/dashboard/head/consultations", icon: <Calendar className="h-5 w-5" /> },
     { label: "Pacientes", href: "/dashboard/head", icon: <Activity className="h-5 w-5" /> },
+    { label: "Remisiones", href: "/dashboard/head/remissions", icon: <Users className="h-5 w-5" /> },
   ],
   [UserRole.NURSE]: [
     { label: "Consultas", href: "/dashboard/nurse", icon: <Activity className="h-5 w-5" /> },
@@ -63,27 +64,27 @@ export function Sidebar({ role, isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname()
   const [isAlmacenHOD, setIsAlmacenHOD] = useState(false)
 
-useEffect(() => {
-  async function loadDept() {
-    if (role !== UserRole.HEAD_OF_DEPARTMENT) return
+  useEffect(() => {
+    async function loadDept() {
+      if (role !== UserRole.HEAD_OF_DEPARTMENT) return
 
-    try {
-      const dep = await api.departments.getmydep()
-      console.log("Departamento del HOD:", dep)
+      try {
+        const dep = await api.departments.getmydep()
+        console.log("Departamento del HOD:", dep)
 
-      // FORZAR a Almacén solo para probar
-      if (dep?.name !== "Almacén") {
-        setIsAlmacenHOD(true)
+        // FORZAR a Almacén solo para probar
+        if (dep?.name !== "Almacén") {
+          setIsAlmacenHOD(true)
+        }
+        // TEMPORALMENTE para test:
+        // setIsAlmacenHOD(dep?.name === "Oncologia") 
+      } catch (error) {
+        console.error(error)
       }
-      // TEMPORALMENTE para test:
-      // setIsAlmacenHOD(dep?.name === "Oncologia") 
-    } catch (error) {
-      console.error(error)
     }
-  }
 
-  loadDept()
-}, [role])
+    loadDept()
+  }, [role])
 
 
 
@@ -91,11 +92,11 @@ useEffect(() => {
 
   // Si es HEAD_OF_DEPARTMENT y NO es del departamento Almacén → ocultar varias opciones
   if (role === UserRole.HEAD_OF_DEPARTMENT && isAlmacenHOD) {
-    const labelsToShow = ["Pacientes", "Consultas", "Remisiones", "Pedidos de Medicamentos", "Envíos al Departamento","Stock del Departamento"]
+    const labelsToShow = ["Pacientes", "Consultas", "Remisiones", "Pedidos de Medicamentos", "Envíos al Departamento", "Stock del Departamento"]
     navItems = navItems.filter(item => labelsToShow.includes(item.label))
-  }else if (role === UserRole.HEAD_OF_DEPARTMENT && !isAlmacenHOD) {
+  } else if (role === UserRole.HEAD_OF_DEPARTMENT && !isAlmacenHOD) {
     // Si es HEAD_OF_DEPARTMENT y es del departamento Almacén → mostrar solo ciertas opciones
-    const labelsToShow = ["Órdenes de Stock Principal", "Entregas","Stock del Departamento", "Envíos al Departamento"]
+    const labelsToShow = ["Órdenes de Stock Principal", "Entregas", "Stock del Departamento", "Envíos al Departamento"]
     navItems = navItems.filter(item => labelsToShow.includes(item.label))
   }
 

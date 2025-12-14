@@ -48,19 +48,19 @@ export function StaffAssignmentDialog({
     fetchAssignments();
   }, [department]);
 
-   useEffect(() => {
+  useEffect(() => {
     const testEndpoints = async () => {
       try {
         console.log("🔍 Probando endpoints de la API...");
-        
+
         // Probar workers
         const workers = await api.workers.getAll();
         console.log("✅ Workers endpoint funciona:", workers.length);
-        
+
         // Probar departments
         const depts = await api.departments.getAll();
         console.log("✅ Departments endpoint funciona:", depts.length);
-        
+
         // Probar workerDepartments - con manejo de error
         try {
           const assignments = await api.workerDepartments.getAll();
@@ -68,7 +68,7 @@ export function StaffAssignmentDialog({
         } catch (error) {
           console.log("❌ WorkerDepartments getAll NO funciona");
         }
-        
+
         // Probar assign
         try {
           // Solo probar si hay workers y departments
@@ -79,12 +79,12 @@ export function StaffAssignmentDialog({
         } catch (error) {
           console.log("❌ Assign endpoint NO funciona");
         }
-        
+
       } catch (error) {
         console.error("❌ Error probando endpoints:", error);
       }
     };
-    
+
     testEndpoints();
   }, []); // ← Array vacío para que se ejecute solo una vez
 
@@ -100,7 +100,9 @@ export function StaffAssignmentDialog({
         .map((assignment) => assignment.worker.id);
 
       const available = allWorkers.filter(
-        (worker: User) => !currentWorkerIds.includes(worker.id)
+        (worker: User) =>
+          !currentWorkerIds.includes(worker.id) &&
+          worker.role !== "head_of_department"
       );
       setAvailableWorkers(available);
     } catch (error) {
@@ -132,113 +134,113 @@ export function StaffAssignmentDialog({
   };
 
   const assignWorker = async () => {
-  if (!selectedWorker) {
-    toast({
-      title: "Error",
-      description: "Selecciona un trabajador para asignar",
-      variant: "destructive",
-    });
-    return;
-  }
+    if (!selectedWorker) {
+      toast({
+        title: "Error",
+        description: "Selecciona un trabajador para asignar",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  setLoading(true);
-  try {
-    console.log("🔄 Asignando trabajador:", selectedWorker, "al departamento:", department.id);
-    
-    // 1. ASIGNAR EL TRABAJADOR
-    const newAssignment = await api.workerDepartments.assign({
-      workerId: selectedWorker,
-      departmentId: department.id,
-    });
-    
-    console.log("✅ Trabajador asignado:", newAssignment);
-    
-    toast({
-      title: "Trabajador asignado",
-      description: "El trabajador ha sido asignado al departamento exitosamente.",
-    });
-    
-    // 2. ACTUALIZAR LA UI DIRECTAMENTE EN LUGAR DE REFETCH
-    // Agregar la nueva asignación localmente en lugar de hacer fetch
-    if (newAssignment) {
-      setAssignments(prev => [...prev, newAssignment]);
+    setLoading(true);
+    try {
+      console.log("🔄 Asignando trabajador:", selectedWorker, "al departamento:", department.id);
+
+      // 1. ASIGNAR EL TRABAJADOR
+      const newAssignment = await api.workerDepartments.assign({
+        workerId: selectedWorker,
+        departmentId: department.id,
+      });
+
+      console.log("✅ Trabajador asignado:", newAssignment);
+
+      toast({
+        title: "Trabajador asignado",
+        description: "El trabajador ha sido asignado al departamento exitosamente.",
+      });
+
+      // 2. ACTUALIZAR LA UI DIRECTAMENTE EN LUGAR DE REFETCH
+      // Agregar la nueva asignación localmente en lugar de hacer fetch
+      if (newAssignment) {
+        setAssignments(prev => [...prev, newAssignment]);
+      }
+
+      // 3. ACTUALIZAR TRABAJADORES DISPONIBLES
+      setAvailableWorkers(prev =>
+        prev.filter(worker => worker.id !== selectedWorker)
+      );
+
+      // 4. LIMPIAR SELECTOR
+      setSelectedWorker("");
+
+      // 5. NOTIFICAR AL COMPONENTE PADRE
+      onUpdate();
+
+    } catch (error: any) {
+      console.error("❌ Error asignando trabajador:", error);
+
+      let errorMessage = "Error al asignar trabajador";
+      if (error.message?.includes("not found")) {
+        errorMessage = "Trabajador o departamento no encontrado";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-    
-    // 3. ACTUALIZAR TRABAJADORES DISPONIBLES
-    setAvailableWorkers(prev => 
-      prev.filter(worker => worker.id !== selectedWorker)
-    );
-    
-    // 4. LIMPIAR SELECTOR
-    setSelectedWorker("");
-    
-    // 5. NOTIFICAR AL COMPONENTE PADRE
-    onUpdate();
-    
-  } catch (error: any) {
-    console.error("❌ Error asignando trabajador:", error);
-    
-    let errorMessage = "Error al asignar trabajador";
-    if (error.message?.includes("not found")) {
-      errorMessage = "Trabajador o departamento no encontrado";
-    } else if (error.message) {
-      errorMessage = error.message;
-    }
-    
-    toast({
-      title: "Error",
-      description: errorMessage,
-      variant: "destructive",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const removeWorker = async (assignmentId: string) => {
-  setLoading(true);
-  try {
-    console.log("🔄 Removiendo asignación:", assignmentId);
-    
-    // 1. REMOVER LA ASIGNACIÓN
-    await api.workerDepartments.remove(assignmentId);
-    
-    toast({
-      title: "Trabajador removido",
-      description: "El trabajador ha sido removido del departamento exitosamente.",
-    });
-    
-    // 2. ACTUALIZAR LA UI DIRECTAMENTE
-    const assignmentToRemove = assignments.find(a => a.id === assignmentId);
-    setAssignments(prev => prev.filter(a => a.id !== assignmentId));
-    
-    // 3. AGREGAR EL TRABAJADOR DE VUELTA A DISPONIBLES
-    if (assignmentToRemove?.worker) {
-      setAvailableWorkers(prev => [...prev, assignmentToRemove.worker]);
+    setLoading(true);
+    try {
+      console.log("🔄 Removiendo asignación:", assignmentId);
+
+      // 1. REMOVER LA ASIGNACIÓN
+      await api.workerDepartments.remove(assignmentId);
+
+      toast({
+        title: "Trabajador removido",
+        description: "El trabajador ha sido removido del departamento exitosamente.",
+      });
+
+      // 2. ACTUALIZAR LA UI DIRECTAMENTE
+      const assignmentToRemove = assignments.find(a => a.id === assignmentId);
+      setAssignments(prev => prev.filter(a => a.id !== assignmentId));
+
+      // 3. AGREGAR EL TRABAJADOR DE VUELTA A DISPONIBLES
+      if (assignmentToRemove?.worker) {
+        setAvailableWorkers(prev => [...prev, assignmentToRemove.worker]);
+      }
+
+      // 4. NOTIFICAR AL COMPONENTE PADRE
+      onUpdate();
+
+    } catch (error: any) {
+      console.error("❌ Error removiendo trabajador:", error);
+
+      let errorMessage = "Error al remover trabajador";
+      if (error.message?.includes("not found")) {
+        errorMessage = "Asignación no encontrada";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-    
-    // 4. NOTIFICAR AL COMPONENTE PADRE
-    onUpdate();
-    
-  } catch (error: any) {
-    console.error("❌ Error removiendo trabajador:", error);
-    
-    let errorMessage = "Error al remover trabajador";
-    if (error.message?.includes("not found")) {
-      errorMessage = "Asignación no encontrada";
-    } else if (error.message) {
-      errorMessage = error.message;
-    }
-    
-    toast({
-      title: "Error",
-      description: errorMessage,
-      variant: "destructive",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+  };
   const getRoleBadge = (role: string) => {
     const roleColors: Record<
       string,
@@ -350,11 +352,11 @@ export function StaffAssignmentDialog({
                       <div className="flex items-center gap-2">
                         {department.headOfDepartment?.worker.id ===
                           assignment.worker.id && (
-                          <Badge variant="destructive">
-                            <Crown className="h-3 w-3 mr-1" />
-                            Jefe
-                          </Badge>
-                        )}
+                            <Badge variant="destructive">
+                              <Crown className="h-3 w-3 mr-1" />
+                              Jefe
+                            </Badge>
+                          )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -362,7 +364,7 @@ export function StaffAssignmentDialog({
                           disabled={
                             loading ||
                             department.headOfDepartment?.worker.id ===
-                              assignment.worker.id
+                            assignment.worker.id
                           }
                         >
                           {loading ? (

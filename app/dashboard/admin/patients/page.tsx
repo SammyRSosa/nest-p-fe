@@ -77,7 +77,7 @@ function AdminPatientsContent() {
 
 export default function AdminPatientsPage() {
   return (
-    <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
+    <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.HEAD_OF_DEPARTMENT, UserRole.DOCTOR]}>
       <AdminPatientsContent />
     </ProtectedRoute>
   )

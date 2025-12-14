@@ -303,7 +303,7 @@ export function DepartmentForm({
               <ul className="text-sm text-muted-foreground space-y-1">
                 {doctors.map((doctor) => (
                   <li key={doctor.id} className="flex justify-between">
-                    <span>{doctor.name}</span>
+                    <span>{doctor.firstName + "" + doctor.lastName}</span>
                     <span className="text-xs bg-primary/10 px-2 py-1 rounded">
                       {doctor.code || "Sin código"}
                     </span>

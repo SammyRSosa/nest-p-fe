@@ -104,23 +104,6 @@ export const api = {
     delete: async (id: string) =>
       fetchWithAuth(`/workers/${id}`, { method: "DELETE" }),
   },
-
-  // ---------------- APPOINTMENTS ----------------
-  appointments: {
-    getAll: async () => fetchWithAuth("/appointments"),
-    getById: async (id: string) => fetchWithAuth(`/appointments/${id}`),
-    create: async (data: any) =>
-      fetchWithAuth("/appointments", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
-    update: async (id: string, data: any) =>
-      fetchWithAuth(`/appointments/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      }),
-  },
-
   // ---------------- DEPARTMENTS ----------------
   departments: {
     getmydep: async () => fetchWithAuth("/departments/by-head"),
@@ -302,6 +285,9 @@ export const api = {
 
     getById: async (id: string) => fetchWithAuth(`/remissions/${id}`),
 
+    getOwn: async () =>
+      fetchWithAuth("remissions/my-remissions/own"),
+
     create: async (data: any) =>
       fetchWithAuth("/remissions", {
         method: "POST",
@@ -334,25 +320,25 @@ export const api = {
 
   // ---------- Medication Deliveries -----------
   medicationDeliveries: {
-  create: async (data: { departmentId: string; items: any[] }) =>
-    fetchWithAuth("/medication-deliveries", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+    create: async (data: { departmentId: string; items: any[] }) =>
+      fetchWithAuth("/medication-deliveries", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
 
-  getAll: async () => fetchWithAuth("/medication-deliveries"),
+    getAll: async () => fetchWithAuth("/medication-deliveries"),
 
-  getById: async (id: string) => fetchWithAuth(`/medication-deliveries/${id}`),
+    getById: async (id: string) => fetchWithAuth(`/medication-deliveries/${id}`),
 
-  getByDepartment: async (departmentId: string) =>
-    fetchWithAuth(`/medication-deliveries/department/${departmentId}`),
+    getByDepartment: async (departmentId: string) =>
+      fetchWithAuth(`/medication-deliveries/department/${departmentId}`),
 
-  updateStatus: async (id: string, status: "pending" | "delivered" | "canceled", comment?: string) =>
-    fetchWithAuth(`/medication-deliveries/${id}/status`, {
-      method: "PATCH",
-      body: JSON.stringify({ status, comment }),
-    }),
-},
+    updateStatus: async (id: string, status: "pending" | "delivered" | "canceled", comment?: string) =>
+      fetchWithAuth(`/medication-deliveries/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status, comment }),
+      }),
+  },
   // ---------- Medication Delivery Items -----------
   medicationDeliveryItems: {
     getAll: async () => fetchWithAuth("/medication-delivery-items"),
