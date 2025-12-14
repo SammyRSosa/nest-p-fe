@@ -55,7 +55,6 @@ const navigationByRole: Record<UserRole, NavItem[]> = {
   ],
   [UserRole.PATIENT]: [
     { label: "Mi Historial", href: "/dashboard/patient", icon: <FileText className="h-5 w-5" /> },
-    { label: "Consultas", href: "/dashboard/patient/appointments", icon: <Calendar className="h-5 w-5" /> },
   ],
 }
 

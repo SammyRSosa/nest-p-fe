@@ -410,7 +410,7 @@ function HeadClinicHistoryContent() {
 
 export default function HeadClinicHistoryPage() {
   return (
-    <ProtectedRoute allowedRoles={[UserRole.HEAD_OF_DEPARTMENT]}>
+    <ProtectedRoute allowedRoles={[UserRole.HEAD_OF_DEPARTMENT, UserRole.DOCTOR]}>
       <HeadClinicHistoryContent />
     </ProtectedRoute>
   )
