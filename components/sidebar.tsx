@@ -42,6 +42,7 @@ const navigationByRole: Record<UserRole, NavItem[]> = {
     { label: "Envíos al Departamento", href: "/dashboard/head/deliveries", icon: <Truck className="h-5 w-5" /> },
     { label: "Órdenes de Stock Principal", href: "/dashboard/head/mainstockorders", icon: <Building2 className="h-5 w-5" /> },
     { label: "Entregas", href: "/dashboard/head/mainstockdeliveries", icon: <Truck className="h-5 w-5" /> },
+    { label: "Trabajadores", href: "/dashboard/head/workers", icon: <Truck className="h-5 w-5" /> }
   ],
   [UserRole.DOCTOR]: [
     { label: "Consultas", href: "/dashboard/doctor", icon: <Calendar className="h-5 w-5" /> },
@@ -92,11 +93,11 @@ export function Sidebar({ role, isOpen = true, onClose }: SidebarProps) {
 
   // Si es HEAD_OF_DEPARTMENT y NO es del departamento Almacén → ocultar varias opciones
   if (role === UserRole.HEAD_OF_DEPARTMENT && isAlmacenHOD) {
-    const labelsToShow = ["Pacientes", "Consultas", "Remisiones", "Pedidos de Medicamentos", "Envíos al Departamento", "Stock del Departamento"]
+    const labelsToShow = ["Pacientes", "Consultas", "Remisiones", "Pedidos de Medicamentos", "Envíos al Departamento", "Stock del Departamento","Trabajadores"]
     navItems = navItems.filter(item => labelsToShow.includes(item.label))
   } else if (role === UserRole.HEAD_OF_DEPARTMENT && !isAlmacenHOD) {
     // Si es HEAD_OF_DEPARTMENT y es del departamento Almacén → mostrar solo ciertas opciones
-    const labelsToShow = ["Órdenes de Stock Principal", "Entregas", "Stock del Departamento", "Envíos al Departamento"]
+    const labelsToShow = ["Órdenes de Stock Principal", "Entregas", "Stock del Departamento", "Envíos al Departamento","Trabajadores"]
     navItems = navItems.filter(item => labelsToShow.includes(item.label))
   }
 

@@ -131,7 +131,7 @@ export default function ReportsGenerator() {
 
       // Título
       pdf.setFontSize(18)
-      pdf.text(`Reporte de ${reportType}`, margin, yPosition)
+      pdf.text(`Reporte de ${getReportTitle(reportType)}`, margin, yPosition)
       yPosition += 15
 
       // Fecha
@@ -157,10 +157,6 @@ export default function ReportsGenerator() {
         pdf.text(`Pendientes: ${reportData.pending}`, margin + 5, yPosition)
         yPosition += 6
       }
-      if (reportData.canceled !== undefined) {
-        pdf.text(`Canceladas: ${reportData.canceled}`, margin + 5, yPosition)
-        yPosition += 6
-      }
       if (reportData.doctors !== undefined) {
         pdf.text(`Médicos: ${reportData.doctors}`, margin + 5, yPosition)
         yPosition += 6
@@ -170,10 +166,9 @@ export default function ReportsGenerator() {
         yPosition += 6
       }
 
-      yPosition += 10
-
       // Tabla de datos
       if (reportData.data && reportData.data.length > 0) {
+        yPosition += 10
         pdf.setFontSize(11)
         pdf.text("Datos Detallados:", margin, yPosition)
         yPosition += 8
@@ -185,7 +180,7 @@ export default function ReportsGenerator() {
                 `${item.patient?.firstName || ""} ${item.patient?.lastName || ""}`.substring(0, 20),
                 `${item.mainDoctor?.firstName || ""} ${item.mainDoctor?.lastName || ""}`.substring(0, 15),
                 (item.department?.name || "").substring(0, 15),
-                item.status || "",
+                getStatusLabel(item.status || ""),
                 new Date(item.createdAt).toLocaleDateString("es-ES"),
               ]
             case "medications":
@@ -205,7 +200,7 @@ export default function ReportsGenerator() {
             case "personnel":
               return [
                 `${item.firstName || ""} ${item.lastName || ""}`.substring(0, 20),
-                item.role || "",
+                getRoleLabel(item.role || ""),
                 (item.department?.name || "").substring(0, 15),
                 item.code || "",
               ]
@@ -231,7 +226,7 @@ export default function ReportsGenerator() {
 
         const headers =
           reportType === "consultations"
-            ? ["Paciente", "Doctor", "Depto", "Estado", "Fecha"]
+            ? ["Paciente", "Médico", "Depto", "Estado", "Fecha"]
             : reportType === "medications"
               ? ["Medicamento", "Depto", "Cantidad", "Unidad"]
               : reportType === "patients"
@@ -295,14 +290,39 @@ export default function ReportsGenerator() {
     }
   }
 
-  const reportTypes = [
-    { id: "consultations", label: "Consultas", icon: FileText },
-    { id: "medications", label: "Medicamentos", icon: Pill },
-    { id: "remissions", label: "Remisiones", icon: TrendingUp },
-    { id: "patients", label: "Pacientes", icon: User },
-    { id: "personnel", label: "Personal", icon: Users },
-    { id: "departments_summary", label: "Departamentos", icon: Building2 },
-  ]
+  const getRoleLabel = (role: string): string => {
+    const roles: Record<string, string> = {
+      doctor: "Médico",
+      nurse: "Enfermero",
+      staff: "Personal",
+      admin: "Administrador",
+      head_of_department: "Jefe de Departamento",
+    }
+    return roles[role] || role
+  }
+
+  const getStatusLabel = (status: string): string => {
+    const statuses: Record<string, string> = {
+      pending: "Pendiente",
+      closed: "Cerrada",
+      canceled: "Cancelada",
+      active: "Activo",
+      inactive: "Inactivo",
+    }
+    return statuses[status] || status
+  }
+
+  const getReportTitle = (type: string): string => {
+    const titles: Record<string, string> = {
+      consultations: "Consultas",
+      medications: "Medicamentos",
+      remissions: "Remisiones",
+      patients: "Pacientes",
+      personnel: "Personal",
+      departments_summary: "Departamentos",
+    }
+    return titles[type] || "Reporte"
+  }
 
   return (
     <div className="space-y-6">
@@ -314,11 +334,17 @@ export default function ReportsGenerator() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Report Type Selection */}
           <div className="space-y-3">
             <Label className="text-base font-semibold">Tipo de Reporte</Label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {reportTypes.map((report) => {
+              {[
+                { id: "consultations", label: "Consultas", icon: FileText },
+                { id: "medications", label: "Medicamentos", icon: Pill },
+                { id: "remissions", label: "Remisiones", icon: TrendingUp },
+                { id: "patients", label: "Pacientes", icon: User },
+                { id: "personnel", label: "Personal", icon: Users },
+                { id: "departments_summary", label: "Departamentos", icon: Building2 },
+              ].map((report) => {
                 const IconComponent = report.icon
                 return (
                   <Button
@@ -338,14 +364,10 @@ export default function ReportsGenerator() {
             </div>
           </div>
 
-          {/* Filters */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
               <Label>Departamento</Label>
-              <Select
-                value={selectedDepartment}
-                onValueChange={setSelectedDepartment}
-              >
+              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
@@ -399,7 +421,6 @@ export default function ReportsGenerator() {
             )}
           </div>
 
-          {/* Button */}
           <div className="flex gap-3 justify-end">
             <Button onClick={loadReport} disabled={loading} size="lg">
               {loading ? (
@@ -415,16 +436,11 @@ export default function ReportsGenerator() {
         </CardContent>
       </Card>
 
-      {/* Report Preview */}
       {reportData && (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center bg-white p-4 border rounded-lg">
-            <h2 className="text-lg font-semibold">Vista Previa</h2>
-            <Button
-              onClick={generatePDF}
-              disabled={generating}
-              size="lg"
-            >
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Vista Previa del Reporte</CardTitle>
+            <Button onClick={generatePDF} disabled={generating} size="lg">
               {generating ? (
                 <>
                   <Loader2 className="h-5 w-5 mr-2 animate-spin" />
@@ -437,347 +453,33 @@ export default function ReportsGenerator() {
                 </>
               )}
             </Button>
-          </div>
-          <div className="border rounded-lg bg-white p-8 overflow-auto">
-            {renderReport(reportType, reportData)}
-          </div>
-        </div>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-auto bg-gray-50 p-4 rounded-lg">
+              <div className="bg-white p-6 rounded">
+                <h2 className="text-2xl font-bold mb-4">{getReportTitle(reportType)}</h2>
+                <p className="text-gray-600 mb-6">
+                  Generado: {new Date().toLocaleDateString("es-ES")}
+                </p>
+                
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-2">Estadísticas</h3>
+                  <p className="text-gray-700">Total de registros: {reportData.total || 0}</p>
+                </div>
+
+                {reportData.data && reportData.data.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Datos</h3>
+                    <p className="text-sm text-gray-600">
+                      Mostrando {Math.min(10, reportData.data.length)} de {reportData.data.length} registros
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
-    </div>
-  )
-}
-
-// Helper function to render reports
-function renderReport(type: string, data: any) {
-  if (!data) return null
-
-  switch (type) {
-    case "consultations":
-      return <ConsultationsReport data={data} />
-    case "medications":
-      return <MedicationsReport data={data} />
-    case "remissions":
-      return <RemissionsReport data={data} />
-    case "patients":
-      return <PatientsReport data={data} />
-    case "personnel":
-      return <PersonnelReport data={data} />
-    case "departments_summary":
-      return <DepartmentsSummaryReport data={data} />
-    default:
-      return null
-  }
-}
-
-// Report Components
-function ConsultationsReport({ data }: { data: any }) {
-  return (
-    <div id="report-content" className="space-y-6">
-      <ReportHeader
-        title="Reporte de Consultas"
-        subtitle={`Generado el ${new Date().toLocaleDateString("es-ES")}`}
-      />
-      <div className="grid grid-cols-4 gap-4">
-        <StatBox label="Total" value={data.total} />
-        <StatBox label="Cerradas" value={data.closed} color="green" />
-        <StatBox label="Pendientes" value={data.pending} color="yellow" />
-        <StatBox label="Canceladas" value={data.canceled} color="red" />
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border p-2 text-left">Paciente</th>
-              <th className="border p-2 text-left">Doctor</th>
-              <th className="border p-2 text-left">Departamento</th>
-              <th className="border p-2 text-left">Estado</th>
-              <th className="border p-2 text-left">Fecha</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.data?.map((consultation: any, idx: number) => (
-              <tr key={idx}>
-                <td className="border p-2">
-                  {consultation.patient?.firstName} {consultation.patient?.lastName}
-                </td>
-                <td className="border p-2">
-                  {consultation.mainDoctor?.firstName} {consultation.mainDoctor?.lastName}
-                </td>
-                <td className="border p-2">{consultation.department?.name}</td>
-                <td className="border p-2">
-                  <span className={`px-2 py-1 rounded text-white text-xs font-semibold ${
-                    consultation.status === "closed" ? "bg-green-600"
-                      : consultation.status === "pending" ? "bg-yellow-600"
-                        : "bg-red-600"
-                  }`}>
-                    {consultation.status}
-                  </span>
-                </td>
-                <td className="border p-2">
-                  {new Date(consultation.createdAt).toLocaleDateString("es-ES")}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-function MedicationsReport({ data }: { data: any }) {
-  return (
-    <div id="report-content" className="space-y-6">
-      <ReportHeader
-        title="Reporte de Stock de Medicamentos"
-        subtitle={`Generado el ${new Date().toLocaleDateString("es-ES")}`}
-      />
-      <div className="grid grid-cols-3 gap-4">
-        <StatBox label="Total Medicamentos" value={data.total} />
-        <StatBox label="Stock Bajo" value={data.lowStock} color="red" />
-        <StatBox label="Cantidad Total" value={data.totalQuantity} />
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border p-2 text-left">Medicamento</th>
-              <th className="border p-2 text-left">Departamento</th>
-              <th className="border p-2 text-left">Cantidad</th>
-              <th className="border p-2 text-left">Unidad</th>
-              <th className="border p-2 text-left">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.data?.map((item: any, idx: number) => (
-              <tr key={idx}>
-                <td className="border p-2">{item.medication?.name}</td>
-                <td className="border p-2">{item.department?.name}</td>
-                <td className="border p-2 font-semibold">{item.quantity}</td>
-                <td className="border p-2">{item.medication?.unit}</td>
-                <td className="border p-2">
-                  <span className={`px-2 py-1 rounded text-white text-xs font-semibold ${
-                    item.quantity < 5 ? "bg-red-600"
-                      : item.quantity < 10 ? "bg-yellow-600"
-                        : "bg-green-600"
-                  }`}>
-                    {item.quantity < 5 ? "Crítico"
-                      : item.quantity < 10 ? "Bajo"
-                        : "Normal"}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-function RemissionsReport({ data }: { data: any }) {
-  return (
-    <div id="report-content" className="space-y-6">
-      <ReportHeader
-        title="Reporte de Remisiones"
-        subtitle={`Generado el ${new Date().toLocaleDateString("es-ES")}`}
-      />
-      <div className="grid grid-cols-4 gap-4">
-        <StatBox label="Total" value={data.total} />
-        <StatBox label="Internas" value={data.internal} color="blue" />
-        <StatBox label="Externas" value={data.external} color="purple" />
-        <StatBox label="Con Consulta" value={data.withConsultation} color="green" />
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border p-2 text-left">Paciente</th>
-              <th className="border p-2 text-left">Destino</th>
-              <th className="border p-2 text-left">Tipo</th>
-              <th className="border p-2 text-left">Fecha</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.data?.map((remission: any, idx: number) => (
-              <tr key={idx}>
-                <td className="border p-2">
-                  {remission.patient?.firstName} {remission.patient?.lastName}
-                </td>
-                <td className="border p-2">
-                  {remission.toDepartment?.name || remission.medicalPost?.name}
-                </td>
-                <td className="border p-2">
-                  <span className={`px-2 py-1 rounded text-white text-xs font-semibold ${
-                    remission.type === "internal" ? "bg-blue-600" : "bg-purple-600"
-                  }`}>
-                    {remission.type === "internal" ? "Interna" : "Externa"}
-                  </span>
-                </td>
-                <td className="border p-2">
-                  {new Date(remission.createdAt).toLocaleDateString("es-ES")}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-function PatientsReport({ data }: { data: any }) {
-  return (
-    <div id="report-content" className="space-y-6">
-      <ReportHeader
-        title="Reporte de Pacientes"
-        subtitle={`Generado el ${new Date().toLocaleDateString("es-ES")}`}
-      />
-      <div className="grid grid-cols-1 gap-4">
-        <StatBox label="Total de Pacientes" value={data.total} />
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border p-2 text-left">Nombre</th>
-              <th className="border p-2 text-left">Cédula</th>
-              <th className="border p-2 text-left">Email</th>
-              <th className="border p-2 text-left">Teléfono</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.data?.map((patient: any, idx: number) => (
-              <tr key={idx}>
-                <td className="border p-2">
-                  {patient.firstName} {patient.lastName}
-                </td>
-                <td className="border p-2">{patient.idNumber}</td>
-                <td className="border p-2">{patient.email}</td>
-                <td className="border p-2">{patient.phone}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-function PersonnelReport({ data }: { data: any }) {
-  return (
-    <div id="report-content" className="space-y-6">
-      <ReportHeader
-        title="Reporte de Personal"
-        subtitle={`Generado el ${new Date().toLocaleDateString("es-ES")}`}
-      />
-      <div className="grid grid-cols-3 gap-4">
-        <StatBox label="Total" value={data.total} />
-        <StatBox label="Médicos" value={data.doctors} color="blue" />
-        <StatBox label="Enfermeros" value={data.nurses} color="purple" />
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border p-2 text-left">Nombre</th>
-              <th className="border p-2 text-left">Rol</th>
-              <th className="border p-2 text-left">Departamento</th>
-              <th className="border p-2 text-left">Código</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.data?.map((worker: any, idx: number) => (
-              <tr key={idx}>
-                <td className="border p-2">
-                  {worker.firstName} {worker.lastName}
-                </td>
-                <td className="border p-2">
-                  <span className="px-2 py-1 rounded text-white text-xs font-semibold bg-blue-600">
-                    {worker.role}
-                  </span>
-                </td>
-                <td className="border p-2">{worker.department?.name}</td>
-                <td className="border p-2">{worker.code}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-function DepartmentsSummaryReport({ data }: { data: any }) {
-  return (
-    <div id="report-content" className="space-y-6">
-      <ReportHeader
-        title="Resumen de Departamentos"
-        subtitle={`Generado el ${new Date().toLocaleDateString("es-ES")}`}
-      />
-      <div className="grid grid-cols-1 gap-4">
-        <StatBox label="Total Departamentos" value={data.total} />
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border p-2 text-left">Departamento</th>
-              <th className="border p-2 text-left">Jefe</th>
-              <th className="border p-2 text-left">Personal</th>
-              <th className="border p-2 text-left">Consultas</th>
-              <th className="border p-2 text-left">Medicamentos</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.data?.map((dept: any, idx: number) => (
-              <tr key={idx}>
-                <td className="border p-2 font-semibold">{dept.name}</td>
-                <td className="border p-2">{dept.head}</td>
-                <td className="border p-2">{dept.personnel}</td>
-                <td className="border p-2">{dept.consultations}</td>
-                <td className="border p-2">{dept.medicationTypes}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-// Helper Components
-function ReportHeader({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div className="border-b-2 pb-4">
-      <h1 className="text-3xl font-bold text-gray-800">{title}</h1>
-      <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
-    </div>
-  )
-}
-
-function StatBox({
-  label,
-  value,
-  color = "primary",
-}: {
-  label: string
-  value: number | string
-  color?: string
-}) {
-  const colors: Record<string, string> = {
-    primary: "bg-blue-100 text-blue-700",
-    green: "bg-green-100 text-green-700",
-    red: "bg-red-100 text-red-700",
-    yellow: "bg-yellow-100 text-yellow-700",
-    purple: "bg-purple-100 text-purple-700",
-    blue: "bg-blue-100 text-blue-700",
-  }
-
-  return (
-    <div className={`p-4 rounded-lg ${colors[color]}`}>
-      <p className="text-sm font-semibold opacity-75">{label}</p>
-      <p className="text-3xl font-bold mt-1">{value}</p>
     </div>
   )
 }
