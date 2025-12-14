@@ -279,6 +279,35 @@ export const api = {
       fetchWithAuth(`/consultation-prescriptions/${id}`, { method: "DELETE" }),
   },
 
+  // ---------- REPORTS ----------
+  reports: {
+    getConsultations: async (queryString: string = "") =>
+      fetchWithAuth(`/reports/consultations${queryString ? `?${queryString}` : ""}`),
+
+    getMedications: async (departmentId?: string) => {
+      const params = new URLSearchParams()
+      if (departmentId) params.append("departmentId", departmentId)
+      return fetchWithAuth(`/reports/medications${params.toString() ? `?${params.toString()}` : ""}`)
+    },
+
+    getRemissions: async (queryString: string = "") =>
+      fetchWithAuth(`/reports/remissions${queryString ? `?${queryString}` : ""}`),
+
+    getPatients: async (departmentId?: string) => {
+      const params = new URLSearchParams()
+      if (departmentId) params.append("departmentId", departmentId)
+      return fetchWithAuth(`/reports/patients${params.toString() ? `?${params.toString()}` : ""}`)
+    },
+
+    getPersonnel: async (departmentId?: string) => {
+      const params = new URLSearchParams()
+      if (departmentId) params.append("departmentId", departmentId)
+      return fetchWithAuth(`/reports/personnel${params.toString() ? `?${params.toString()}` : ""}`)
+    },
+
+    getDepartmentsSummary: async () =>
+      fetchWithAuth("/reports/departments-summary"),
+  },
   // ---------- REMISSIONS ----------
   remissions: {
     getAll: async () => fetchWithAuth("/remissions"),
