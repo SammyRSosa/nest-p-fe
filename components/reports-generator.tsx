@@ -217,7 +217,7 @@ export default function ReportsGenerator() {
               return [
                 `${item.patient?.firstName || ""} ${item.patient?.lastName || ""}`.substring(0, 20),
                 (item.toDepartment?.name || item.medicalPost?.name || "").substring(0, 20),
-                item.type === "internal" ? "Interna" : "Externa",
+                item.medicalPost? "Externa" : "Interna",
                 new Date(item.createdAt).toLocaleDateString("es-ES"),
               ]
             case "departments_summary":
