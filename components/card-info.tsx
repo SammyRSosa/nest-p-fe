@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import type { ReactNode } from "react"
+import type { LucideIcon } from "lucide-react"
 
 interface CardInfoProps {
   title: string
@@ -17,6 +18,7 @@ interface CardInfoProps {
     label: string
     onClick: () => void
     variant?: "default" | "secondary" | "destructive" | "outline" | "ghost"
+    icon?: LucideIcon
   }[]
 }
 
@@ -41,16 +43,20 @@ export function CardInfo({ title, description, children, badge, actions }: CardI
           {children}
           {actions && actions.length > 0 && (
             <div className="flex gap-2 mt-4">
-              {actions.map((action, index) => (
-                <Button
-                  key={index}
-                  variant={action.variant || "default"}
-                  onClick={action.onClick}
-                  className={action.variant === "default" ? "bg-accent hover:bg-accent/90" : ""}
-                >
-                  {action.label}
-                </Button>
-              ))}
+              {actions.map((action, index) => {
+                const Icon = action.icon
+                return (
+                  <Button
+                    key={index}
+                    variant={action.variant || "default"}
+                    onClick={action.onClick}
+                    className={action.variant === "default" ? "bg-accent hover:bg-accent/90" : ""}
+                  >
+                    {Icon && <Icon className="mr-2 h-4 w-4" />}
+                    {action.label}
+                  </Button>
+                )
+              })}
             </div>
           )}
         </CardContent>
