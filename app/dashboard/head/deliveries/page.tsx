@@ -62,6 +62,10 @@ function DeliveriesContent() {
   const [updateStatus, setUpdateStatus] = useState<"pending" | "delivered" | "canceled" | "">("")
   const [comment, setComment] = useState("")
   const { toast } = useToast()
+  const [isNewMedModalOpen, setIsNewMedModalOpen] = useState(false)
+  const [newMedication, setNewMedication] = useState({ name: "", code: "", unit: "", description: "", })
+  const [isCreatingMedication, setIsCreatingMedication] = useState(false)
+  const isWarehouse = department?.name?.toLowerCase() === "almacén"
 
   useEffect(() => {
     loadData()
@@ -326,13 +330,15 @@ function DeliveriesContent() {
                 <SelectItem value="canceled">Cancelado</SelectItem>
               </SelectContent>
             </Select>
-            <Button
-              className="bg-accent hover:bg-accent/90 text-white"
-              onClick={() => setIsAddModalOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo Envío
-            </Button>
+            {isWarehouse && (
+              <Button
+                className="bg-accent hover:bg-accent/90 text-white"
+                onClick={() => setIsAddModalOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Envío
+              </Button>
+            )}
           </div>
         </div>
 
@@ -670,7 +676,14 @@ function DeliveriesContent() {
                   <div key={index} className="flex gap-3 items-end">
                     <Select
                       value={item.medicationId}
-                      onValueChange={(val) => updateItem(index, "medicationId", val)}
+                      onValueChange={(val) => {
+                        if (val === "__new__") {
+                          setIsNewMedModalOpen(true)
+                          return
+                        }
+                        updateItem(index, "medicationId", val)
+                      }}
+
                     >
                       <SelectTrigger className="flex-1 border-accent/20">
                         <SelectValue placeholder="Selecciona medicamento" />
@@ -681,6 +694,9 @@ function DeliveriesContent() {
                             {med.name} {med.code ? `(${med.code})` : ""}
                           </SelectItem>
                         ))}
+                        <SelectItem value="__new__">
+                          ➕ Agregar nuevo medicamento
+                        </SelectItem>
                       </SelectContent>
                     </Select>
 
@@ -737,6 +753,140 @@ function DeliveriesContent() {
           </Card>
         </div>
       )}
+      {/* CREATE MEDICATION MODAL */}
+      {isNewMedModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-lg shadow-2xl">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-accent to-accent/70 px-6 py-5 rounded-t-lg">
+              <h2 className="text-xl font-bold text-white">
+                Agregar nuevo medicamento
+              </h2>
+              <p className="text-sm text-white/80">
+                El medicamento se agregará al catálogo general
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              {/* Name */}
+              <div>
+                <label className="text-sm font-semibold text-gray-700 block mb-1">
+                  Nombre *
+                </label>
+                <Input
+                  placeholder="Ej: Paracetamol"
+                  value={newMedication.name}
+                  onChange={(e) =>
+                    setNewMedication({ ...newMedication, name: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* Code */}
+              <div>
+                <label className="text-sm font-semibold text-gray-700 block mb-1">
+                  Código
+                </label>
+                <Input
+                  placeholder="Ej: MED-001"
+                  value={newMedication.code}
+                  onChange={(e) =>
+                    setNewMedication({ ...newMedication, code: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* Unit */}
+              <div>
+                <label className="text-sm font-semibold text-gray-700 block mb-1">
+                  Unidad
+                </label>
+                <Input
+                  placeholder="Ej: tabletas, frascos, ml"
+                  value={newMedication.unit}
+                  onChange={(e) =>
+                    setNewMedication({ ...newMedication, unit: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="text-sm font-semibold text-gray-700 block mb-1">
+                  Descripción
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Descripción opcional del medicamento"
+                  value={newMedication.description}
+                  onChange={(e) =>
+                    setNewMedication({
+                      ...newMedication,
+                      description: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsNewMedModalOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="bg-accent text-white"
+                disabled={!newMedication.name || isCreatingMedication}
+                onClick={async () => {
+                  try {
+                    setIsCreatingMedication(true)
+
+                    const created = await api.medications.create({
+                      name: newMedication.name.trim(),
+                      code: newMedication.code || undefined,
+                      unit: newMedication.unit || undefined,
+                      description: newMedication.description || undefined,
+                    })
+
+                    toast({
+                      title: "Medicamento creado",
+                      description: "El medicamento fue agregado correctamente",
+                    })
+
+                    // Actualiza lista
+                    setMedications((prev) => [...prev, created])
+
+                    setIsNewMedModalOpen(false)
+                    setNewMedication({
+                      name: "",
+                      code: "",
+                      description: "",
+                      unit: "",
+                    })
+                  } catch (err: any) {
+                    toast({
+                      title: "Error",
+                      description:
+                        err.message || "No se pudo crear el medicamento",
+                      variant: "destructive",
+                    })
+                  } finally {
+                    setIsCreatingMedication(false)
+                  }
+                }}
+              >
+                Guardar
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
     </DashboardLayout>
   )
 }

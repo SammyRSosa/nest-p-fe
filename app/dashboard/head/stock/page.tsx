@@ -3,14 +3,13 @@
 import { useState, useEffect } from "react"
 import { ProtectedRoute } from "@/components/protected-route"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectTrigger, SelectItem, SelectContent, SelectValue } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { api } from "@/lib/api"
 import { UserRole } from "@/types"
-import { Pill, Plus, AlertCircle, CheckCircle, Search, Package, TrendingUp } from "lucide-react"
+import { AlertCircle, CheckCircle, Search, Package, TrendingUp } from "lucide-react"
 import { StatCard } from "@/components/stat-card"
 import { motion } from "framer-motion"
 
@@ -32,15 +31,9 @@ function DepartmentStockContent() {
   const [medications, setMedications] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [department, setDepartment] = useState<any>(null)
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const { toast } = useToast()
-
-  const [formData, setFormData] = useState({
-    medicationId: "",
-    quantity: 0,
-  })
 
   useEffect(() => {
     loadData()
@@ -80,48 +73,6 @@ function DepartmentStockContent() {
       setMedications([])
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleAddMedication = async () => {
-    if (!formData.medicationId || !department) {
-      toast({
-        title: "Error",
-        description: "Por favor selecciona un medicamento",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (formData.quantity <= 0) {
-      toast({
-        title: "Error",
-        description: "La cantidad debe ser mayor a 0",
-        variant: "destructive",
-      })
-      return
-    }
-
-    try {
-      await api.stockItems.create(department.id, {
-        medicationId: formData.medicationId,
-        quantity: formData.quantity,
-      })
-
-      toast({
-        title: "Éxito",
-        description: "Medicamento agregado al stock",
-      })
-
-      await loadData()
-      setIsAddModalOpen(false)
-      setFormData({ medicationId: "", quantity: 0 })
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo agregar el medicamento",
-        variant: "destructive",
-      })
     }
   }
 
@@ -241,13 +192,6 @@ function DepartmentStockContent() {
                 <SelectItem value="low">Stock Bajo</SelectItem>
               </SelectContent>
             </Select>
-            <Button
-              className="bg-accent hover:bg-accent/90 text-white"
-              onClick={() => setIsAddModalOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Agregar Medicamento
-            </Button>
           </div>
         </div>
 
@@ -410,89 +354,6 @@ function DepartmentStockContent() {
           </CardContent>
         </Card>
       </div>
-
-      {/* ADD MEDICATION MODAL */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md shadow-2xl">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-accent to-accent/70 px-6 py-6 rounded-t-lg">
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <Plus className="h-6 w-6" />
-                Agregar Medicamento
-              </h2>
-              <p className="text-white/80 text-sm mt-1">
-                Añade un nuevo medicamento al stock del departamento
-              </p>
-            </div>
-
-            {/* Content */}
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="text-sm font-semibold text-gray-700 block mb-2">
-                  Medicamento
-                </label>
-                <Select
-                  value={formData.medicationId}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, medicationId: value })
-                  }
-                >
-                  <SelectTrigger className="border-accent/20">
-                    <SelectValue placeholder="Seleccionar medicamento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {medications.map((med) => (
-                      <SelectItem key={med.id} value={med.id}>
-                        {med.name} {med.code ? `(${med.code})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="text-sm font-semibold text-gray-700 block mb-2">
-                  Cantidad
-                </label>
-                <Input
-                  type="number"
-                  placeholder="Ingresa la cantidad"
-                  min="1"
-                  value={formData.quantity || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      quantity: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="border-accent/20"
-                />
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="bg-gray-50 px-6 py-4 rounded-b-lg border-t border-gray-200 flex gap-3 justify-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsAddModalOpen(false)
-                  setFormData({ medicationId: "", quantity: 0 })
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                className="bg-accent hover:bg-accent/90 text-white"
-                onClick={handleAddMedication}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Agregar
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
     </DashboardLayout>
   )
 }
