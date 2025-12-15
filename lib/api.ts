@@ -153,6 +153,8 @@ export const api = {
     getById: async (id: string) => fetchWithAuth(`/worker-departments/bydepartment/${id}`),
     remove: async (id: string) =>
       fetchWithAuth(`/worker-departments/${id}`, { method: "DELETE" }),
+
+    
   },
 
 

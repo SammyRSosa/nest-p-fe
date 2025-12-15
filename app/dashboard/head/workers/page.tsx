@@ -99,17 +99,14 @@ export default function HeadDepartmentStaffPage() {
             setDepartment(deptData)
             setAllWorkers(workersData || [])
 
-            // Filtrar trabajadores del departamento
-            const deptWorkers = workersData?.filter(
-                (w: Worker) => w.department?.id === deptData?.id
-            ) || []
+            // Use the workers array directly from department data
+            const deptWorkers = deptData?.workers || []
             setDepartmentWorkers(deptWorkers)
 
-            // Filtrar trabajadores disponibles (sin departamento o de otro departamento)
+            // Filter workers not in this department
+            const deptWorkerIds = new Set(deptWorkers.map((w: Worker) => w.id))
             const available = workersData?.filter(
-                (w: Worker) =>
-                    !w.department ||
-                    w.department.id !== deptData?.id
+                (w: Worker) => !deptWorkerIds.has(w.id) && w.role !== "head_of_department"
             ) || []
             setAvailableWorkers(available)
         } catch (error) {
@@ -293,6 +290,8 @@ export default function HeadDepartmentStaffPage() {
                 return "bg-green-100 text-green-700"
             case "staff":
                 return "bg-gray-100 text-gray-700"
+            case "head_of_department":
+                return "bg-purple-100 text-purple-700"
             default:
                 return "bg-gray-100 text-gray-700"
         }
@@ -422,6 +421,7 @@ export default function HeadDepartmentStaffPage() {
                                                         setIsEditModalOpen(true)
                                                     }}
                                                     className="flex-1"
+                                                    disabled={worker.role === "head_of_department"}
                                                 >
                                                     <Edit2 className="h-3 w-3 mr-1" />
                                                     Rol
@@ -431,6 +431,7 @@ export default function HeadDepartmentStaffPage() {
                                                     variant="outline"
                                                     onClick={() => handleRemoveWorker(worker.id)}
                                                     className="text-red-600 hover:text-red-700 flex-1"
+                                                    disabled={worker.role === "head_of_department"}
                                                 >
                                                     <LogOut className="h-3 w-3 mr-1" />
                                                     Remover
@@ -483,6 +484,7 @@ export default function HeadDepartmentStaffPage() {
                                                 size="sm"
                                                 onClick={() => handleAssignWorker(worker.id)}
                                                 className="w-full bg-accent hover:bg-accent/90"
+                                                disabled={worker.role === "head_of_department"}
                                             >
                                                 <LogIn className="h-3 w-3 mr-1" />
                                                 Asignar

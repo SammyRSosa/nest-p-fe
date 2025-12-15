@@ -411,7 +411,7 @@ function DepartmentsContent() {
                     className="flex-1 px-3 py-2 border border-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                   >
                     <option value="">Selecciona un nuevo jefe</option>
-                    {workers.filter(w => w.role !== "head_of_department" || w.id === selectedDept.headOfDepartment?.worker?.id).map(w => (
+                    {workers.filter(w => w.role == "doctor" || w.id === selectedDept.headOfDepartment?.worker?.id).map(w => (
                       <option key={w.id} value={w.id}>
                         {w.firstName} {w.lastName} ({w.role})
                       </option>
