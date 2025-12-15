@@ -16,23 +16,25 @@ interface Consultation {
   createdAt: Date
 }
 
-interface ClinicHistory {
+interface Patient {
   id: string
-  patient: {
-    id: string
-    firstName: string
-    lastName: string
-    idNumber: number
-    email: string
-    phone: number
-    dateOfBirth: Date
-  }
-  consultations: Consultation[]
-  notes: string | null
-  createdAt: Date
+  firstName: string
+  lastName: string
+  idNumber?: number | string
+  email?: string
+  phone?: number | string
+  dateOfBirth?: Date
 }
 
-function ClinicHistoriesDashboardContent() {
+interface ClinicHistory {
+  id: string
+  patient?: Patient | null
+  consultations?: Consultation[] | null
+  notes?: string | null
+  createdAt?: Date
+}
+
+export function ClinicHistoriesDashboardContent() {
   const [clinicHistory, setClinicHistory] = useState<ClinicHistory | null>(null)
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
@@ -58,41 +60,13 @@ function ClinicHistoriesDashboardContent() {
   const getStatusConfig = (status: string) => {
     switch (status) {
       case "closed":
-        return {
-          label: "Cerrada",
-          color: "bg-green-50 border-green-200",
-          textColor: "text-green-700",
-          icon: CheckCircle,
-          bgIcon: "bg-green-100",
-          dotColor: "bg-green-500",
-        }
+        return { label: "Cerrada", color: "bg-green-50 border-green-200", textColor: "text-green-700", icon: CheckCircle, bgIcon: "bg-green-100", dotColor: "bg-green-500" }
       case "pending":
-        return {
-          label: "Pendiente",
-          color: "bg-yellow-50 border-yellow-200",
-          textColor: "text-yellow-700",
-          icon: Clock,
-          bgIcon: "bg-yellow-100",
-          dotColor: "bg-yellow-500",
-        }
+        return { label: "Pendiente", color: "bg-yellow-50 border-yellow-200", textColor: "text-yellow-700", icon: Clock, bgIcon: "bg-yellow-100", dotColor: "bg-yellow-500" }
       case "canceled":
-        return {
-          label: "Cancelada",
-          color: "bg-red-50 border-red-200",
-          textColor: "text-red-700",
-          icon: AlertCircle,
-          bgIcon: "bg-red-100",
-          dotColor: "bg-red-500",
-        }
+        return { label: "Cancelada", color: "bg-red-50 border-red-200", textColor: "text-red-700", icon: AlertCircle, bgIcon: "bg-red-100", dotColor: "bg-red-500" }
       default:
-        return {
-          label: status,
-          color: "bg-gray-50 border-gray-200",
-          textColor: "text-gray-700",
-          icon: FileText,
-          bgIcon: "bg-gray-100",
-          dotColor: "bg-gray-500",
-        }
+        return { label: status, color: "bg-gray-50 border-gray-200", textColor: "text-gray-700", icon: FileText, bgIcon: "bg-gray-100", dotColor: "bg-gray-500" }
     }
   }
 
@@ -119,12 +93,16 @@ function ClinicHistoriesDashboardContent() {
     )
   }
 
+  const consultations = clinicHistory.consultations ?? []
+
   const stats = {
-    total: clinicHistory.consultations.length,
-    closed: clinicHistory.consultations.filter((c) => c.status === "closed").length,
-    pending: clinicHistory.consultations.filter((c) => c.status === "pending").length,
-    canceled: clinicHistory.consultations.filter((c) => c.status === "canceled").length,
+    total: consultations.length,
+    closed: consultations.filter((c) => c.status === "closed").length,
+    pending: consultations.filter((c) => c.status === "pending").length,
+    canceled: consultations.filter((c) => c.status === "canceled").length,
   }
+
+  const patient = clinicHistory.patient
 
   return (
     <DashboardLayout>
@@ -136,72 +114,72 @@ function ClinicHistoriesDashboardContent() {
         </div>
 
         {/* Patient Info Card */}
-        <Card className="border-accent/20 bg-gradient-to-br from-accent/5 to-accent/10">
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex items-start gap-4">
-                <div className="h-16 w-16 rounded-lg bg-accent flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                  {clinicHistory.patient.firstName.charAt(0)}
-                  {clinicHistory.patient.lastName.charAt(0)}
+        {patient && (
+          <Card className="border-accent/20 bg-gradient-to-br from-accent/5 to-accent/10">
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-start gap-4">
+                  <div className="h-16 w-16 rounded-lg bg-accent flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                    {patient.firstName?.charAt(0)}
+                    {patient.lastName?.charAt(0)}
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">
+                      {patient.firstName} {patient.lastName}
+                    </h2>
+                    {patient.idNumber && <p className="text-sm text-muted-foreground mt-1">ID: {patient.idNumber}</p>}
+                    {patient.dateOfBirth && (
+                      <p className="text-sm text-muted-foreground">
+                        Nacimiento: {new Date(patient.dateOfBirth).toLocaleDateString("es-ES")}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">
-                    {clinicHistory.patient.firstName} {clinicHistory.patient.lastName}
-                  </h2>
-                  <p className="text-sm text-muted-foreground mt-1">ID: {clinicHistory.patient.idNumber}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Nacimiento: {new Date(clinicHistory.patient.dateOfBirth).toLocaleDateString("es-ES")}
-                  </p>
-                </div>
-              </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <Mail className="h-5 w-5 text-accent/70 flex-shrink-0" />
-                  <p className="text-sm text-gray-700 break-all">{clinicHistory.patient.email}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Phone className="h-5 w-5 text-accent/70 flex-shrink-0" />
-                  <p className="text-sm text-gray-700">{clinicHistory.patient.phone}</p>
+                <div className="space-y-3">
+                  {patient.email && (
+                    <div className="flex items-center gap-3">
+                      <Mail className="h-5 w-5 text-accent/70 flex-shrink-0" />
+                      <p className="text-sm text-gray-700 break-all">{patient.email}</p>
+                    </div>
+                  )}
+                  {patient.phone && (
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-5 w-5 text-accent/70 flex-shrink-0" />
+                      <p className="text-sm text-gray-700">{patient.phone}</p>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats */}
-        {clinicHistory.consultations.length > 0 && (
+        {consultations.length > 0 && (
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-                  <p className="text-sm text-muted-foreground mt-1">Total de Consultas</p>
-                </div>
+              <CardContent className="pt-6 text-center">
+                <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+                <p className="text-sm text-muted-foreground mt-1">Total de Consultas</p>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-green-600">{stats.closed}</p>
-                  <p className="text-sm text-muted-foreground mt-1">Cerradas</p>
-                </div>
+              <CardContent className="pt-6 text-center">
+                <p className="text-3xl font-bold text-green-600">{stats.closed}</p>
+                <p className="text-sm text-muted-foreground mt-1">Cerradas</p>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-yellow-600">{stats.pending}</p>
-                  <p className="text-sm text-muted-foreground mt-1">Pendientes</p>
-                </div>
+              <CardContent className="pt-6 text-center">
+                <p className="text-3xl font-bold text-yellow-600">{stats.pending}</p>
+                <p className="text-sm text-muted-foreground mt-1">Pendientes</p>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-red-600">{stats.canceled}</p>
-                  <p className="text-sm text-muted-foreground mt-1">Canceladas</p>
-                </div>
+              <CardContent className="pt-6 text-center">
+                <p className="text-3xl font-bold text-red-600">{stats.canceled}</p>
+                <p className="text-sm text-muted-foreground mt-1">Canceladas</p>
               </CardContent>
             </Card>
           </div>
@@ -211,7 +189,7 @@ function ClinicHistoriesDashboardContent() {
         <div className="space-y-4">
           <h2 className="text-2xl font-bold text-gray-900">Mis Consultas</h2>
 
-          {clinicHistory.consultations.length === 0 ? (
+          {consultations.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="pt-12 pb-12 text-center">
                 <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
@@ -220,7 +198,7 @@ function ClinicHistoriesDashboardContent() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {clinicHistory.consultations.map((consultation, idx) => {
+              {consultations.map((consultation, idx) => {
                 const config = getStatusConfig(consultation.status)
                 const Icon = config.icon
 
@@ -240,7 +218,7 @@ function ClinicHistoriesDashboardContent() {
                           </div>
 
                           <p className="text-sm text-muted-foreground mb-3">
-                            {new Date(consultation.createdAt).toLocaleDateString("es-ES", {
+                            {consultation.createdAt && new Date(consultation.createdAt).toLocaleDateString("es-ES", {
                               weekday: "long",
                               year: "numeric",
                               month: "long",

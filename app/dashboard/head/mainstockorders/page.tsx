@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectItem, SelectContent, SelectValue } from "@/components/ui/select";
 import { motion } from "framer-motion";
-import { Check, X, Package, Clock, AlertCircle, Eye, TrendingUp, Search, MessageSquare } from "lucide-react";
+import { Check, X, Package, Clock, AlertCircle, Eye, TrendingUp, Search, MessageSquare, TrendingDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { StatCard } from "@/components/stat-card";
@@ -23,6 +23,13 @@ interface OrderItem {
   medicationId?: string;
   medication?: Medication;
   quantity: number;
+}
+
+interface StockLevel {
+  medicationId: string;
+  quantity: number;
+  minThreshold: number;
+  maxThreshold: number;
 }
 
 interface MedicationOrder {
@@ -50,6 +57,8 @@ function AlmaceneroContent() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [departmentStockLevels, setDepartmentStockLevels] = useState<Map<string, StockLevel>>(new Map());
+  const [loadingStocks, setLoadingStocks] = useState(false);
 
   const fetchMedicationOrders = async () => {
     try {
@@ -62,6 +71,37 @@ function AlmaceneroContent() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchDepartmentStockLevels = async (departmentId: string) => {
+    try {
+      setLoadingStocks(true);
+      const stockItems = await api.stockItems.findByDepartment(departmentId);
+      
+      const stockMap = new Map<string, StockLevel>();
+      if (Array.isArray(stockItems)) {
+        stockItems.forEach((item: any) => {
+          stockMap.set(item.medication.id, {
+            medicationId: item.medication.id,
+            quantity: item.quantity,
+            minThreshold: item.minThreshold,
+            maxThreshold: item.maxThreshold,
+          });
+        });
+      }
+      
+      setDepartmentStockLevels(stockMap);
+    } catch (error) {
+      console.error("Error fetching stock levels:", error);
+    } finally {
+      setLoadingStocks(false);
+    }
+  };
+
+  const openDetailsModal = async (order: MedicationOrder) => {
+    setSelectedOrder(order);
+    await fetchDepartmentStockLevels(order.department.id);
+    setIsDetailsModalOpen(true);
   };
 
   const acceptOrder = async () => {
@@ -158,6 +198,18 @@ function AlmaceneroContent() {
           dotColor: "border-l-yellow-500",
         };
     }
+  };
+
+  const getStockStatusIndicator = (stock: StockLevel | undefined) => {
+    if (!stock) return { label: "Sin dato", color: "text-gray-600", bgColor: "bg-gray-100", icon: AlertCircle };
+    
+    if (stock.quantity < stock.minThreshold) {
+      return { label: "Crítico", color: "text-red-600", bgColor: "bg-red-100", icon: TrendingDown };
+    }
+    if (stock.quantity > stock.maxThreshold) {
+      return { label: "Excedido", color: "text-blue-600", bgColor: "bg-blue-100", icon: TrendingUp };
+    }
+    return { label: "Normal", color: "text-green-600", bgColor: "bg-green-100", icon: Check };
   };
 
   return (
@@ -365,10 +417,7 @@ function AlmaceneroContent() {
                             <Button
                               variant="outline"
                               className="border-accent/20 hover:bg-accent/5"
-                              onClick={() => {
-                                setSelectedOrder(order);
-                                setIsDetailsModalOpen(true);
-                              }}
+                              onClick={() => openDetailsModal(order)}
                             >
                               <Eye className="mr-2 h-4 w-4" />
                               Detalles
@@ -489,12 +538,19 @@ function AlmaceneroContent() {
                 </CardContent>
               </Card>
 
-              {/* Items List */}
+              {/* Items List with Stock Levels */}
               <div>
                 <h3 className="text-lg font-semibold mb-4">
                   Medicamentos Solicitados ({selectedOrder.items?.length || 0})
                 </h3>
-                {!selectedOrder.items || selectedOrder.items.length === 0 ? (
+                {loadingStocks ? (
+                  <Card>
+                    <CardContent className="pt-8 pb-8 text-center">
+                      <div className="h-8 w-8 border-4 border-accent/20 border-t-accent rounded-full animate-spin mx-auto mb-2"></div>
+                      <p className="text-sm text-gray-600">Cargando niveles de stock...</p>
+                    </CardContent>
+                  </Card>
+                ) : !selectedOrder.items || selectedOrder.items.length === 0 ? (
                   <Card className="border-dashed">
                     <CardContent className="pt-8 pb-8 text-center">
                       <Package className="h-8 w-8 text-gray-400 mx-auto mb-2" />
@@ -503,30 +559,91 @@ function AlmaceneroContent() {
                   </Card>
                 ) : (
                   <div className="space-y-3">
-                    {selectedOrder.items.map((item, idx) => (
-                      <Card key={idx} className="hover:shadow-md transition-shadow">
-                        <CardContent className="pt-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <p className="font-semibold text-gray-900">
-                                {item.medication?.name || "Medicamento"}
-                              </p>
-                              {item.medication?.code && (
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  Código: {item.medication.code}
-                                </p>
+                    {selectedOrder.items.map((item, idx) => {
+                      const stock = departmentStockLevels.get(item.medication?.id || "");
+                      const stockStatus = getStockStatusIndicator(stock);
+                      const StockIcon = stockStatus.icon;
+
+                      return (
+                        <Card key={idx} className="hover:shadow-md transition-shadow border-l-4 border-l-accent">
+                          <CardContent className="pt-4">
+                            <div className="space-y-3">
+                              {/* Medication Name and Code */}
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <p className="font-semibold text-gray-900">
+                                    {item.medication?.name || "Medicamento"}
+                                  </p>
+                                  {item.medication?.code && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Código: {item.medication.code}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Requested Quantity and Current Stock */}
+                              <div className="grid grid-cols-2 gap-4">
+                                {/* Requested Quantity */}
+                                <div className="p-3 bg-accent/10 rounded-lg border border-accent/20">
+                                  <p className="text-xs uppercase tracking-wide text-accent font-semibold mb-1">
+                                    Cantidad Solicitada
+                                  </p>
+                                  <p className="text-2xl font-bold text-accent">
+                                    {item.quantity}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {item.medication?.unit || "unidades"}
+                                  </p>
+                                </div>
+
+                                {/* Current Stock Level */}
+                                <div className={`p-3 rounded-lg border ${stockStatus.bgColor}`}>
+                                  <p className={`text-xs uppercase tracking-wide ${stockStatus.color} font-semibold mb-1`}>
+                                    Stock Actual
+                                  </p>
+                                  <div className="flex items-center justify-between">
+                                    <p className={`text-2xl font-bold ${stockStatus.color}`}>
+                                      {stock?.quantity ?? "—"}
+                                    </p>
+                                    <StockIcon className={`h-5 w-5 ${stockStatus.color}`} />
+                                  </div>
+                                  <p className={`text-xs mt-1 ${stockStatus.color}`}>
+                                    {stock ? `Rango: ${stock.minThreshold} - ${stock.maxThreshold}` : "Sin dato"}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Stock Status Badge */}
+                              {stock && (
+                                <div className="flex items-center gap-2">
+                                  <div className={`h-2 w-2 rounded-full ${stockStatus.bgColor}`}></div>
+                                  <span className={`text-sm font-semibold ${stockStatus.color}`}>
+                                    Estado: {stockStatus.label}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Alert if stock is low */}
+                              {stock && stock.quantity < stock.minThreshold && (
+                                <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700 font-medium flex items-center gap-2">
+                                  <AlertCircle className="h-4 w-4" />
+                                  Stock crítico: {stock.quantity} de {stock.minThreshold} mínimo
+                                </div>
+                              )}
+
+                              {/* Alert if stock insufficient for order */}
+                              {stock && stock.quantity  + item.quantity > stock.maxThreshold && (
+                                <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700 font-medium flex items-center gap-2">
+                                  <AlertCircle className="h-4 w-4" />
+                                  Stock insuficiente: se necesitan {stock.maxThreshold} pero hay {stock.quantity + item.quantity}
+                                </div>
                               )}
                             </div>
-                            <div className="text-right flex-shrink-0 ml-4 p-3 bg-accent/10 rounded-lg">
-                              <p className="text-lg font-bold text-accent">{item.quantity}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {item.medication?.unit || "unidades"}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 )}
               </div>
