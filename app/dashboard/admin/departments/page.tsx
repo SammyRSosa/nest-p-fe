@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Users, Crown, AlertCircle, X, Loader2, Building2, Search, Package, AlertTriangle, TrendingUp } from 'lucide-react';
+import { 
+  Plus, Edit2, Trash2, Users, Crown, AlertCircle, X, 
+  Loader2, Building2, Search, Package, AlertTriangle, TrendingUp 
+} from 'lucide-react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { StatCard } from '@/components/stat-card';
@@ -14,6 +17,7 @@ import type { Department, User } from '@/types';
 import { UserRole } from '@/types';
 import { motion } from 'framer-motion';
 
+// --- Types ---
 interface StockItem {
   id: string;
   medication: { id: string; name: string };
@@ -33,10 +37,13 @@ interface ConsumptionRow {
 }
 
 function DepartmentsContent() {
+  // --- Hooks & State ---
   const { departments, loading, fetchDepartments } = useDepartments();
   const [modalType, setModalType] = useState<'create' | 'edit' | 'staff' | 'stock' | null>(null);
   const [selectedDept, setSelectedDept] = useState<Department | null>(null);
   const [search, setSearch] = useState('');
+  
+  // Form & Worker States
   const [formData, setFormData] = useState({ name: '' });
   const [workers, setWorkers] = useState<User[]>([]);
   const [availableWorkers, setAvailableWorkers] = useState<User[]>([]);
@@ -58,6 +65,7 @@ function DepartmentsContent() {
   const [loadingConsumption, setLoadingConsumption] = useState(false);
   const [stockTab, setStockTab] = useState<'inventory' | 'consumption'>('inventory');
 
+  // --- Effects ---
   useEffect(() => {
     fetchDepartments();
     fetchWorkers();
@@ -78,6 +86,7 @@ function DepartmentsContent() {
     }
   }, [selectedDept, modalType, stockTab]);
 
+  // --- API Handlers ---
   const fetchWorkers = async () => {
     try {
       const data = await api.workers.getAll();
@@ -110,6 +119,7 @@ function DepartmentsContent() {
     }
   };
 
+  // --- Modal Openers ---
   const openCreateModal = () => {
     setFormData({ name: '' });
     setSelectedDept(null);
@@ -134,6 +144,7 @@ function DepartmentsContent() {
     setModalType('stock');
   };
 
+  // --- Action Handlers ---
   const handleSaveDepartment = async () => {
     if (!formData.name.trim()) {
       alert('El nombre es requerido');
@@ -143,7 +154,10 @@ function DepartmentsContent() {
     setModalLoading(true);
     try {
       if (selectedDept) {
-        await api.departments.update(selectedDept.id, { name: formData.name, headWorkerId: selectedDept.headOfDepartment?.worker?.id || '' });
+        await api.departments.update(selectedDept.id, { 
+          name: formData.name, 
+          headWorkerId: selectedDept.headOfDepartment?.worker?.id || '' 
+        });
       } else {
         await api.departments.create({ name: formData.name, headWorkerId: '' });
       }
@@ -200,7 +214,9 @@ function DepartmentsContent() {
     setModalLoading(true);
     try {
       const assignments = await api.workerDepartments.getById(selectedDept.id);
-      const assignment = Array.isArray(assignments) ? assignments.find((a: any) => a.worker?.id === workerId) : assignments;
+      const assignment = Array.isArray(assignments) 
+        ? assignments.find((a: any) => a.worker?.id === workerId) 
+        : assignments;
       if (assignment?.id) {
         await api.workerDepartments.remove(assignment.id);
         await fetchDepartments();
@@ -268,6 +284,7 @@ function DepartmentsContent() {
     }
   };
 
+  // --- Derived State ---
   const filteredDepts = (departments || []).filter(d =>
     d.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -395,8 +412,145 @@ function DepartmentsContent() {
           )}
         </div>
 
-        {/* Modals (Create/Edit, Staff, Stock) */}
-        {/* ... KEEP YOUR EXISTING CREATE/EDIT & STAFF MODALS ... */}
+        {/* CREATE/EDIT MODAL */}
+        {(modalType === 'create' || modalType === 'edit') && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
+            <Card className="w-full max-w-md my-8 shadow-2xl">
+              <div className="bg-gradient-to-r from-accent to-accent/70 px-6 py-6 rounded-t-lg">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <Building2 className="h-6 w-6" />
+                  {modalType === 'create' ? 'Nuevo Departamento' : 'Editar Departamento'}
+                </h2>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Nombre del Departamento</label>
+                  <Input
+                    value={formData.name}
+                    onChange={(e) => setFormData({ name: e.target.value })}
+                    placeholder="Ej: Urgencias, Pediatría"
+                    className="border-accent/20"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-4">
+                  <Button variant="outline" onClick={() => setModalType(null)} className="flex-1">
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleSaveDepartment} disabled={modalLoading} className="flex-1 bg-accent hover:bg-accent/90">
+                    {modalLoading ? 'Guardando...' : 'Guardar'}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* STAFF MANAGEMENT MODAL */}
+        {modalType === 'staff' && selectedDept && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
+            <Card className="w-full max-w-xl my-8 shadow-2xl">
+              <div className="bg-gradient-to-r from-accent to-accent/70 px-6 py-6 rounded-t-lg">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <Users className="h-6 w-6" />
+                  Gestionar Personal - {selectedDept.name}
+                </h2>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Head of Department Selection */}
+                <div className="border-b pb-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <Crown className="h-5 w-5 text-accent" />
+                    Jefe del Departamento
+                  </h3>
+                  {selectedDept.headOfDepartment && (
+                    <div className="mb-4 p-3 rounded-lg bg-accent/10 border border-accent/20">
+                      <p className="text-sm font-medium text-gray-900">{selectedDept.headOfDepartment.worker.firstName} {selectedDept.headOfDepartment.worker.lastName}</p>
+                      <p className="text-xs text-gray-600">{selectedDept.headOfDepartment.worker.email}</p>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <select
+                      value={headWorkerSelection}
+                      onChange={(e) => setHeadWorkerSelection(e.target.value)}
+                      className="flex-1 px-3 py-2 border border-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                    >
+                      <option value="">Selecciona un nuevo jefe</option>
+                      {workers.filter(w => w.role !== 'head_of_department' || w.id === selectedDept.headOfDepartment?.worker?.id).map(w => (
+                        <option key={w.id} value={w.id}>
+                          {w.firstName} {w.lastName} ({w.role})
+                        </option>
+                      ))}
+                    </select>
+                    <Button onClick={handleUpdateHead} disabled={!headWorkerSelection || modalLoading} className="bg-accent hover:bg-accent/90">
+                      {modalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Actualizar'}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Current Staff */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-3">Personal Actual ({selectedDept.workers?.length || 0})</h3>
+                  {selectedDept.workers && selectedDept.workers.length > 0 ? (
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {selectedDept.workers.map(w => (
+                        <div key={w.id} className={`flex items-center justify-between p-3 border rounded-lg ${w.id === selectedDept.headOfDepartment?.worker?.id ? 'bg-accent/10 border-accent/40' : 'bg-gray-50 border-accent/20'}`}>
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">{w.firstName} {w.lastName}</p>
+                            <p className="text-sm text-gray-600">{w.email}</p>
+                          </div>
+                          {w.id === selectedDept.headOfDepartment?.worker?.id && (
+                            <Crown className="h-4 w-4 text-accent mr-2" />
+                          )}
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleRemoveWorker(w.id)}
+                            disabled={modalLoading || w.id === selectedDept.headOfDepartment?.worker?.id}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm p-3 border border-dashed rounded">Sin personal asignado</p>
+                  )}
+                </div>
+
+                {/* Add Staff */}
+                {availableWorkers.filter(w => w.role !== 'head_of_department').length > 0 && (
+                  <div className="border-t pt-6">
+                    <h3 className="text-lg font-bold text-gray-900 mb-3">Asignar Personal</h3>
+                    <div className="flex gap-2">
+                      <select
+                        value={selectedWorker}
+                        onChange={(e) => setSelectedWorker(e.target.value)}
+                        className="flex-1 px-3 py-2 border border-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                      >
+                        <option value="">Selecciona un trabajador</option>
+                        {availableWorkers.filter(w => w.role !== 'head_of_department').map(w => (
+                          <option key={w.id} value={w.id}>
+                            {w.firstName} {w.lastName}
+                          </option>
+                        ))}
+                      </select>
+                      <Button onClick={handleAssignWorker} disabled={!selectedWorker || modalLoading} className="bg-accent hover:bg-accent/90">
+                        {modalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <Button onClick={() => setModalType(null)} variant="outline" className="w-full">
+                  Cerrar
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
 
         {/* STOCK MANAGEMENT MODAL */}
         {modalType === 'stock' && selectedDept && (
