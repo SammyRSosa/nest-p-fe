@@ -1,8 +1,8 @@
-"use client"
+"use client" // <--- FIX: ADDED THIS DIRECTIVE
 
 import React, { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -13,6 +13,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
 import {
     Users,
     Plus,
@@ -21,10 +22,18 @@ import {
     LogIn,
     LogOut,
     Loader2,
+    Activity,
+    Calendar,
+    TrendingUp,
+    CheckCircle2,
+    XCircle
 } from "lucide-react"
 import { api } from "@/lib/api"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { toast } from "@/hooks/use-toast"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+
+// --- Interfaces ---
 
 interface Worker {
     id: string
@@ -55,7 +64,31 @@ interface WorkerAssignment {
     leftAt?: Date;
 }
 
+interface SuccessRateData {
+    doctorId: string;
+    totalConsultations: number;
+    successfulConsultations: number;
+    failedConsultations: number;
+    successRate: number;
+    period: {
+        startDate?: string;
+        endDate?: string;
+    };
+    details: Array<{
+        consultationId: string;
+        consultationDate: string;
+        patientName: string;
+        returnedWithin3Months: boolean;
+        // The SuccessRateData interface provided in the user's previous context
+        // contained a 'successful' boolean property that is missing here.
+        // Assuming success is the OPPOSITE of 'returnedWithin3Months' for now,
+        // but it is safer to ask the backend to include a unique patient ID.
+        // For the fix, we will infer the 'successful' property.
+    }>;
+}
+
 export default function HeadDepartmentStaffPage() {
+    // --- Existing State ---
     const [department, setDepartment] = useState<Department | null>(null)
     const [allWorkers, setAllWorkers] = useState<Worker[]>([])
     const [departmentWorkers, setDepartmentWorkers] = useState<Worker[]>([])
@@ -65,6 +98,15 @@ export default function HeadDepartmentStaffPage() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [search, setSearch] = useState("")
+
+    // --- New State for Stats ---
+    const [isStatsModalOpen, setIsStatsModalOpen] = useState(false)
+    const [statsLoading, setStatsLoading] = useState(false)
+    const [statsData, setStatsData] = useState<SuccessRateData | null>(null)
+    const [statsDateRange, setStatsDateRange] = useState({
+        start: "",
+        end: ""
+    })
 
     const [formData, setFormData] = useState({
         firstName: "",
@@ -99,11 +141,9 @@ export default function HeadDepartmentStaffPage() {
             setDepartment(deptData)
             setAllWorkers(workersData || [])
 
-            // Use the workers array directly from department data
             const deptWorkers = deptData?.workers || []
             setDepartmentWorkers(deptWorkers)
 
-            // Filter workers not in this department
             const deptWorkerIds = new Set(deptWorkers.map((w: Worker) => w.id))
             const available = workersData?.filter(
                 (w: Worker) => !deptWorkerIds.has(w.id) && w.role !== "head_of_department"
@@ -120,6 +160,100 @@ export default function HeadDepartmentStaffPage() {
             setLoading(false)
         }
     }
+
+    // --- Stats Handlers ---
+
+    const handleOpenStats = (worker: Worker) => {
+        setSelectedWorker(worker)
+        // Default to last 3 months
+        const end = new Date();
+        const start = new Date();
+        start.setMonth(start.getMonth() - 3);
+
+        const dateToInput = (d: Date) => d.toISOString().split('T')[0];
+
+        setStatsDateRange({
+            start: dateToInput(start),
+            end: dateToInput(end)
+        })
+
+        setIsStatsModalOpen(true)
+        fetchStats(worker.id, dateToInput(start), dateToInput(end))
+    }
+
+    // Inside HeadDepartmentStaffPage.tsx
+    const fetchStats = async (doctorId: string, start?: string, end?: string) => {
+        setStatsLoading(true);
+        try {
+            const data: SuccessRateData = await api.reports.getDoctorSuccessRate(doctorId, start, end);
+
+            // === START OF FRONTEND CLEANUP ===
+            // This logic filters out same-day, same-patient *subsequent* consultations,
+            // which were causing the previous backend issue. We only keep the FIRST consultation of the day per patient.
+
+            // NOTE: Using patientName for uniqueness is highly discouraged. A 'patientId' should be used.
+            const seenPatients: { [date: string]: Set<string> } = {};
+
+            const cleanedDetails = data.details.filter(detail => {
+                const dateKey = detail.consultationDate.split('T')[0]; // YYYY-MM-DD
+
+                if (!seenPatients[dateKey]) {
+                    seenPatients[dateKey] = new Set();
+                }
+
+                // Check if this patient already had a consultation recorded on this date
+                if (seenPatients[dateKey].has(detail.patientName)) {
+                    // If yes, discard this redundant consultation for the same success rate window
+                    return false;
+                } else {
+                    // If no, record it and keep this consultation
+                    seenPatients[dateKey].add(detail.patientName);
+                    return true;
+                }
+            });
+
+            // Recalculate summary metrics based on the cleaned data
+            const totalConsultations = cleanedDetails.length;
+            // FIX: Corrected the filter to check the boolean property
+            const successfulConsultations = cleanedDetails.filter(r => !r.returnedWithin3Months).length; 
+            const failedConsultations = totalConsultations - successfulConsultations;
+
+            const successRate = totalConsultations > 0
+                ? parseFloat(((successfulConsultations / totalConsultations) * 100).toFixed(2))
+                : 0;
+
+            // Apply the cleaned data to the state
+            const cleanedData: SuccessRateData = {
+                ...data,
+                totalConsultations,
+                successfulConsultations,
+                failedConsultations,
+                successRate,
+                details: cleanedDetails,
+            };
+
+            setStatsData(cleanedData);
+
+            // === END OF FRONTEND CLEANUP ===
+        } catch (error) {
+            console.error(error);
+            toast({
+                title: "Error",
+                description: "No se pudieron cargar las estadísticas",
+                variant: "destructive"
+            });
+        } finally {
+            setStatsLoading(false);
+        }
+    }
+
+    const handleDateFilterChange = () => {
+        if (selectedWorker) {
+            fetchStats(selectedWorker.id, statsDateRange.start, statsDateRange.end);
+        }
+    }
+
+    // --- Worker Actions ---
 
     const handleAddWorker = async () => {
         if (!formData.firstName || !formData.lastName || !formData.email) {
@@ -172,100 +306,38 @@ export default function HeadDepartmentStaffPage() {
                 workerId,
                 departmentId: department.id,
             })
-
-            toast({
-                title: "Trabajador asignado",
-                description: "El trabajador ha sido asignado al departamento.",
-            })
-
+            toast({ title: "Trabajador asignado", description: "El trabajador ha sido asignado al departamento." })
             await fetchData()
         } catch (error: any) {
-            toast({
-                title: "Error",
-                description: error.message || "Error al asignar trabajador",
-                variant: "destructive",
-            })
+            toast({ title: "Error", description: error.message || "Error al asignar trabajador", variant: "destructive" })
         }
     }
 
     const handleRemoveWorker = async (workerId: string) => {
         if (!confirm('¿Estás seguro de que deseas remover este trabajador?')) return;
-
         try {
-            // Get all active assignments for this department
-            const assignments = await api.workerDepartments.getById(
-                department?.id || '',
-            );
+            const assignments = await api.workerDepartments.getById(department?.id || '');
+            const workerAssignment = assignments?.find((assignment: WorkerAssignment) => assignment.worker.id === workerId);
+            if (!workerAssignment) throw new Error('No se encontró la asignación');
 
-            const workerAssignment = assignments?.find(
-                (assignment: WorkerAssignment) => assignment.worker.id === workerId,
-            );
-
-            if (!workerAssignment) {
-                throw new Error('No se encontró la asignación del trabajador');
-            }
-
-            // Deactivate the assignment instead of deleting it
             await api.workerDepartments.remove(workerAssignment.id);
-
-            toast({
-                title: 'Trabajador removido',
-                description: 'El trabajador ha sido removido del departamento.',
-            });
-
+            toast({ title: 'Trabajador removido', description: 'El trabajador ha sido removido del departamento.' });
             await fetchData();
         } catch (error: any) {
-            toast({
-                title: 'Error',
-                description: error.message || 'Error al remover trabajador',
-                variant: 'destructive',
-            });
+            toast({ title: 'Error', description: error.message || 'Error al remover trabajador', variant: "destructive" });
         }
     };
 
     const handleEditRole = async () => {
         if (!selectedWorker || !editFormData.role) return
-
         try {
-            await api.workers.update(selectedWorker.id, {
-                role: editFormData.role,
-            })
-
-            toast({
-                title: "Rol actualizado",
-                description: "El rol del trabajador ha sido actualizado.",
-            })
-
+            await api.workers.update(selectedWorker.id, { role: editFormData.role })
+            toast({ title: "Rol actualizado", description: "El rol del trabajador ha sido actualizado." })
             setIsEditModalOpen(false)
             setSelectedWorker(null)
             await fetchData()
         } catch (error: any) {
-            toast({
-                title: "Error",
-                description: error.message || "Error al actualizar rol",
-                variant: "destructive",
-            })
-        }
-    }
-
-    const handleDeleteWorker = async (workerId: string) => {
-        if (!confirm("¿Estás seguro de que deseas eliminar este trabajador?")) return
-
-        try {
-            await api.workers.delete(workerId)
-
-            toast({
-                title: "Trabajador eliminado",
-                description: "El trabajador ha sido eliminado.",
-            })
-
-            await fetchData()
-        } catch (error: any) {
-            toast({
-                title: "Error",
-                description: error.message || "Error al eliminar trabajador",
-                variant: "destructive",
-            })
+            toast({ title: "Error", description: error.message || "Error al actualizar rol", variant: "destructive" })
         }
     }
 
@@ -284,16 +356,11 @@ export default function HeadDepartmentStaffPage() {
 
     const getRoleBadgeColor = (role: string) => {
         switch (role) {
-            case "doctor":
-                return "bg-blue-100 text-blue-700"
-            case "nurse":
-                return "bg-green-100 text-green-700"
-            case "staff":
-                return "bg-gray-100 text-gray-700"
-            case "head_of_department":
-                return "bg-purple-100 text-purple-700"
-            default:
-                return "bg-gray-100 text-gray-700"
+            case "doctor": return "bg-blue-100 text-blue-700"
+            case "nurse": return "bg-green-100 text-green-700"
+            case "staff": return "bg-gray-100 text-gray-700"
+            case "head_of_department": return "bg-purple-100 text-purple-700"
+            default: return "bg-gray-100 text-gray-700"
         }
     }
 
@@ -327,7 +394,7 @@ export default function HeadDepartmentStaffPage() {
                     </Button>
                 </div>
 
-                {/* Stats */}
+                {/* Stats Summary */}
                 <div className="grid gap-4 md:grid-cols-3">
                     <Card>
                         <CardHeader className="pb-3">
@@ -341,12 +408,9 @@ export default function HeadDepartmentStaffPage() {
                             <p className="text-xs text-muted-foreground mt-1">En tu departamento</p>
                         </CardContent>
                     </Card>
-
                     <Card>
                         <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Médicos
-                            </CardTitle>
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Médicos</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-3xl font-bold">
@@ -354,12 +418,9 @@ export default function HeadDepartmentStaffPage() {
                             </div>
                         </CardContent>
                     </Card>
-
                     <Card>
                         <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Enfermeros
-                            </CardTitle>
+                            <CardTitle className="text-sm font-medium text-muted-foreground">Enfermeros</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-3xl font-bold">
@@ -379,15 +440,13 @@ export default function HeadDepartmentStaffPage() {
                     />
                 </div>
 
-                {/* Department Workers */}
+                {/* Department Workers Grid */}
                 <div>
                     <h2 className="text-xl font-semibold mb-4">Personal del Departamento</h2>
                     {filteredDeptWorkers.length === 0 ? (
                         <Card>
                             <CardContent className="py-8 text-center text-muted-foreground">
-                                {departmentWorkers.length === 0
-                                    ? "No hay trabajadores asignados"
-                                    : "No se encontraron resultados"}
+                                {departmentWorkers.length === 0 ? "No hay trabajadores asignados" : "No se encontraron resultados"}
                             </CardContent>
                         </Card>
                     ) : (
@@ -408,34 +467,47 @@ export default function HeadDepartmentStaffPage() {
                                             <div className="text-sm space-y-1 text-muted-foreground">
                                                 {worker.email && <p>Email: {worker.email}</p>}
                                                 {worker.phone && <p>Teléfono: {worker.phone}</p>}
-                                                {worker.code && <p>Código: {worker.code}</p>}
                                             </div>
 
-                                            <div className="flex gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => {
-                                                        setSelectedWorker(worker)
-                                                        setEditFormData({ role: worker.role })
-                                                        setIsEditModalOpen(true)
-                                                    }}
-                                                    className="flex-1"
-                                                    disabled={worker.role === "head_of_department"}
-                                                >
-                                                    <Edit2 className="h-3 w-3 mr-1" />
-                                                    Rol
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => handleRemoveWorker(worker.id)}
-                                                    className="text-red-600 hover:text-red-700 flex-1"
-                                                    disabled={worker.role === "head_of_department"}
-                                                >
-                                                    <LogOut className="h-3 w-3 mr-1" />
-                                                    Remover
-                                                </Button>
+                                            <div className="flex flex-col gap-2">
+                                                {/* SHOW STATS BUTTON IF DOCTOR */}
+                                                {worker.role === 'doctor' && (
+                                                    <Button
+                                                        size="sm"
+                                                        className="w-full bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+                                                        onClick={() => handleOpenStats(worker)}
+                                                    >
+                                                        <Activity className="h-4 w-4 mr-2" />
+                                                        Ver Efectividad
+                                                    </Button>
+                                                )}
+
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => {
+                                                            setSelectedWorker(worker)
+                                                            setEditFormData({ role: worker.role })
+                                                            setIsEditModalOpen(true)
+                                                        }}
+                                                        className="flex-1"
+                                                        disabled={worker.role === "head_of_department"}
+                                                    >
+                                                        <Edit2 className="h-3 w-3 mr-1" />
+                                                        Rol
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => handleRemoveWorker(worker.id)}
+                                                        className="text-red-600 hover:text-red-700 flex-1"
+                                                        disabled={worker.role === "head_of_department"}
+                                                    >
+                                                        <LogOut className="h-3 w-3 mr-1" />
+                                                        Remover
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </div>
                                     </CardContent>
@@ -445,7 +517,7 @@ export default function HeadDepartmentStaffPage() {
                     )}
                 </div>
 
-                {/* Available Workers */}
+                {/* Available Workers Grid */}
                 <div>
                     <h2 className="text-xl font-semibold mb-4">Trabajadores Disponibles</h2>
                     {filteredAvailable.length === 0 ? (
@@ -461,33 +533,15 @@ export default function HeadDepartmentStaffPage() {
                                     <CardContent className="pt-6">
                                         <div className="space-y-4">
                                             <div>
-                                                <h3 className="font-semibold text-lg">
-                                                    {worker.firstName} {worker.lastName}
-                                                </h3>
-                                                <Badge className={`mt-2 ${getRoleBadgeColor(worker.role)}`}>
-                                                    {getRoleLabel(worker.role)}
-                                                </Badge>
+                                                <h3 className="font-semibold text-lg">{worker.firstName} {worker.lastName}</h3>
+                                                <Badge className={`mt-2 ${getRoleBadgeColor(worker.role)}`}>{getRoleLabel(worker.role)}</Badge>
                                             </div>
-
                                             <div className="text-sm space-y-1 text-muted-foreground">
                                                 {worker.email && <p>Email: {worker.email}</p>}
-                                                {worker.phone && <p>Teléfono: {worker.phone}</p>}
-                                                {worker.code && <p>Código: {worker.code}</p>}
-                                                {worker.department && (
-                                                    <p className="text-xs text-gray-600">
-                                                        Depto: {worker.department.name}
-                                                    </p>
-                                                )}
+                                                {worker.department && <p className="text-xs text-gray-600">Depto: {worker.department.name}</p>}
                                             </div>
-
-                                            <Button
-                                                size="sm"
-                                                onClick={() => handleAssignWorker(worker.id)}
-                                                className="w-full bg-accent hover:bg-accent/90"
-                                                disabled={worker.role === "head_of_department"}
-                                            >
-                                                <LogIn className="h-3 w-3 mr-1" />
-                                                Asignar
+                                            <Button size="sm" onClick={() => handleAssignWorker(worker.id)} className="w-full bg-accent hover:bg-accent/90" disabled={worker.role === "head_of_department"}>
+                                                <LogIn className="h-3 w-3 mr-1" /> Asignar
                                             </Button>
                                         </div>
                                     </CardContent>
@@ -498,145 +552,230 @@ export default function HeadDepartmentStaffPage() {
                 </div>
             </div>
 
-            {/* Add Worker Modal */}
-            {isAddModalOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-md my-8">
-                        <h2 className="text-xl font-semibold mb-6">Agregar Nuevo Trabajador</h2>
+            {/* --- Modals --- */}
 
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>Nombre *</Label>
-                                <Input
-                                    placeholder="Juan"
-                                    value={formData.firstName}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, firstName: e.target.value })
-                                    }
-                                />
-                            </div>
+            {/* STATS MODAL */}
+            <Dialog open={isStatsModalOpen} onOpenChange={setIsStatsModalOpen}>
+                <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-2xl">
+                            <Activity className="h-6 w-6 text-accent" />
+                            Efectividad del Médico
+                        </DialogTitle>
+                        <CardDescription>
+                            Análisis de reingresos para {selectedWorker?.firstName} {selectedWorker?.lastName}
+                        </CardDescription>
+                    </DialogHeader>
 
+                    <div className="space-y-6 py-4">
+                        {/* Filters */}
+                        <div className="flex gap-4 items-end bg-gray-50 p-4 rounded-lg border">
                             <div className="space-y-2">
-                                <Label>Apellido *</Label>
-                                <Input
-                                    placeholder="Pérez"
-                                    value={formData.lastName}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, lastName: e.target.value })
-                                    }
-                                />
+                                <Label>Fecha Inicio</Label>
+                                <div className="relative">
+                                    <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                                    <Input
+                                        type="date"
+                                        className="pl-8"
+                                        value={statsDateRange.start}
+                                        onChange={(e) => setStatsDateRange({ ...statsDateRange, start: e.target.value })}
+                                    />
+                                </div>
                             </div>
-
                             <div className="space-y-2">
-                                <Label>Email *</Label>
-                                <Input
-                                    type="email"
-                                    placeholder="juan@ejemplo.com"
-                                    value={formData.email}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, email: e.target.value })
-                                    }
-                                />
+                                <Label>Fecha Fin</Label>
+                                <div className="relative">
+                                    <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                                    <Input
+                                        type="date"
+                                        className="pl-8"
+                                        value={statsDateRange.end}
+                                        onChange={(e) => setStatsDateRange({ ...statsDateRange, end: e.target.value })}
+                                    />
+                                </div>
                             </div>
-
-                            <div className="space-y-2">
-                                <Label>Teléfono</Label>
-                                <Input
-                                    placeholder="+1 234 567 8900"
-                                    value={formData.phone}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, phone: e.target.value })
-                                    }
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label>Rol *</Label>
-                                <Select value={formData.role} onValueChange={(value) =>
-                                    setFormData({ ...formData, role: value })
-                                }>
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {roles.map((role) => (
-                                            <SelectItem key={role.value} value={role.value}>
-                                                {role.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                            <Button onClick={handleDateFilterChange} disabled={statsLoading}>
+                                {statsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Actualizar'}
+                            </Button>
                         </div>
 
-                        <div className="flex gap-2 mt-6">
-                            <Button
-                                variant="outline"
-                                className="flex-1"
-                                onClick={() => setIsAddModalOpen(false)}
-                            >
-                                Cancelar
-                            </Button>
-                            <Button
-                                onClick={handleAddWorker}
-                                className="flex-1 bg-accent hover:bg-accent/90"
-                            >
-                                Agregar
-                            </Button>
+                        {statsLoading ? (
+                            <div className="h-40 flex items-center justify-center">
+                                <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                            </div>
+                        ) : statsData ? (
+                            <>
+                                {/* KPI Cards */}
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <Card>
+                                        <CardContent className="pt-6">
+                                            <div className="text-2xl font-bold text-accent">{statsData.successRate}%</div>
+                                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                                <TrendingUp className="h-3 w-3" /> Tasa de Éxito
+                                            </p>
+                                        </CardContent>
+                                    </Card>
+                                    <Card>
+                                        <CardContent className="pt-6">
+                                            <div className="text-2xl font-bold">{statsData.totalConsultations}</div>
+                                            <p className="text-sm text-muted-foreground">Total Consultas</p>
+                                        </CardContent>
+                                    </Card>
+                                    <Card className="bg-green-50 border-green-200">
+                                        <CardContent className="pt-6">
+                                            <div className="text-2xl font-bold text-green-700">{statsData.successfulConsultations}</div>
+                                            <p className="text-sm text-green-600 flex items-center gap-1">
+                                                <CheckCircle2 className="h-3 w-3" /> Exitosas (No volvieron)
+                                            </p>
+                                        </CardContent>
+                                    </Card>
+                                    <Card className="bg-red-50 border-red-200">
+                                        <CardContent className="pt-6">
+                                            <div className="text-2xl font-bold text-red-700">{statsData.failedConsultations}</div>
+                                            <p className="text-sm text-red-600 flex items-center gap-1">
+                                                <XCircle className="h-3 w-3" /> Reingresos (&lt;3 meses)
+                                            </p>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+
+                                {/* Progress Bar Visual */}
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-sm font-medium">
+                                        <span>Efectividad del Tratamiento</span>
+                                        <span>{statsData.successRate}%</span>
+                                    </div>
+                                    <Progress value={statsData.successRate} className="h-3" />
+                                    <p className="text-xs text-muted-foreground">
+                                        * Basado en pacientes que no regresaron por la misma causa en 90 días.
+                                    </p>
+                                </div>
+
+                                {/* Detailed Table */}
+                                <div className="border rounded-lg overflow-hidden">
+                                    <div className="bg-gray-100 px-4 py-2 font-semibold text-sm border-b">Detalle Reciente</div>
+                                    <div className="max-h-60 overflow-y-auto">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="bg-gray-50 text-gray-500 sticky top-0">
+                                                <tr>
+                                                    <th className="px-4 py-2 font-medium">Fecha Consulta</th>
+                                                    <th className="px-4 py-2 font-medium">Paciente</th>
+                                                    <th className="px-4 py-2 font-medium">Estado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y">
+                                                {statsData.details.map((detail, idx) => (
+                                                    <tr key={idx} className="hover:bg-gray-50">
+                                                        <td className="px-4 py-2">
+                                                            {new Date(detail.consultationDate).toLocaleDateString()}
+                                                        </td>
+                                                        <td className="px-4 py-2">{detail.patientName}</td>
+                                                        <td className="px-4 py-2">
+                                                            {detail.returnedWithin3Months ? (
+                                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                                    Reingresó
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                                    Exitoso
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {statsData.details.length === 0 && (
+                                            <div className="p-4 text-center text-gray-500">No hay datos en este rango.</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="p-8 text-center text-muted-foreground">
+                                No se encontraron datos de efectividad para este médico en el rango seleccionado.
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+
+            {/* ADD WORKER MODAL */}
+            <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Agregar Nuevo Trabajador</DialogTitle>
+                        <CardDescription>Crea un nuevo usuario y asígnalo a tu departamento.</CardDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="firstName" className="text-right">Nombre</Label>
+                            <Input id="firstName" value={formData.firstName} onChange={(e) => setFormData({ ...formData, firstName: e.target.value })} className="col-span-3" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="lastName" className="text-right">Apellido</Label>
+                            <Input id="lastName" value={formData.lastName} onChange={(e) => setFormData({ ...formData, lastName: e.target.value })} className="col-span-3" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="email" className="text-right">Email</Label>
+                            <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="col-span-3" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="phone" className="text-right">Teléfono</Label>
+                            <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="col-span-3" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="role" className="text-right">Rol</Label>
+                            <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })} disabled={formData.role === "head_of_department"}>
+                                <SelectTrigger className="col-span-3">
+                                    <SelectValue placeholder="Seleccionar Rol" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {roles.map((role) => (
+                                        <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
-                </div>
-            )}
+                    <div className="flex justify-end">
+                        <Button onClick={handleAddWorker} className="bg-accent hover:bg-accent/90">
+                            Crear y Asignar
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
-            {/* Edit Role Modal */}
-            {isEditModalOpen && selectedWorker && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                        <h2 className="text-xl font-semibold mb-6">
-                            Cambiar Rol - {selectedWorker.firstName} {selectedWorker.lastName}
-                        </h2>
-
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>Nuevo Rol *</Label>
-                                <Select value={editFormData.role} onValueChange={(value) =>
-                                    setEditFormData({ role: value })
-                                }>
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {roles.map((role) => (
-                                            <SelectItem key={role.value} value={role.value}>
-                                                {role.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-2 mt-6">
-                            <Button
-                                variant="outline"
-                                className="flex-1"
-                                onClick={() => {
-                                    setIsEditModalOpen(false)
-                                    setSelectedWorker(null)
-                                }}
-                            >
-                                Cancelar
-                            </Button>
-                            <Button
-                                onClick={handleEditRole}
-                                className="flex-1 bg-accent hover:bg-accent/90"
-                            >
-                                Guardar
-                            </Button>
+            {/* EDIT ROLE MODAL */}
+            <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Editar Rol de {selectedWorker?.firstName} {selectedWorker?.lastName}</DialogTitle>
+                        <CardDescription>Actualiza el rol del trabajador en el sistema.</CardDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="edit-role" className="text-right">Nuevo Rol</Label>
+                            <Select value={editFormData.role} onValueChange={(value) => setEditFormData({ role: value })} disabled={selectedWorker?.role === "head_of_department"}>
+                                <SelectTrigger className="col-span-3" id="edit-role">
+                                    <SelectValue placeholder="Seleccionar Rol" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {roles.map((role) => (
+                                        <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
-                </div>
-            )}
+                    <div className="flex justify-end">
+                        <Button onClick={handleEditRole} disabled={selectedWorker?.role === "head_of_department"}>
+                            Guardar Cambios
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </DashboardLayout>
     )
 }

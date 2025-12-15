@@ -289,43 +289,78 @@ export const api = {
 
   // ---------- REPORTS ----------
   reports: {
+    getDoctorSuccessRate: async (doctorId: string, startDate?: string, endDate?: string) => {
+
+      // 1. Construct URLSearchParams to handle query parameters
+      const params = new URLSearchParams({ doctorId });
+
+      if (startDate) {
+        params.append('startDate', startDate);
+      }
+      if (endDate) {
+        params.append('endDate', endDate);
+      }
+
+      // 2. Build the full URL with the query string
+      const url = `/reports/doctor-success-rate?${params.toString()}`;
+
+      // 3. Execute the GET request
+      // The request must be a GET request and must include the parameters in the URL.
+      const response = await fetchWithAuth(url, {
+        // GET is the default method, so we omit 'method'. 
+        // We still include headers for consistency, but no body is attached.
+        headers: {
+          'Content-Type': 'application/json'
+        },
+      });
+
+      // 4. Handle HTTP errors
+      if (!response.ok) {
+        // It's good practice to try and read error messages from the body
+        const errorDetail = await response.text();
+        throw new Error(`Failed to fetch doctor success rate: ${response.statusText}. Details: ${errorDetail}`);
+      }
+
+      return response;
+    },
+
     getMedicationConsumptionByDepartment: async (departmentId?: string, month?: string) => {
       const response = await fetchWithAuth('/reports/medication-consumption/bydep', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ departmentId, month }),
       });
-      
+
       return response;
     },
 
-  getConsultations: async (queryString: string = "") =>
-    fetchWithAuth(`/reports/consultations${queryString ? `?${queryString}` : ""}`),
+    getConsultations: async (queryString: string = "") =>
+      fetchWithAuth(`/reports/consultations${queryString ? `?${queryString}` : ""}`),
 
-  getMedications: async (departmentId?: string) => {
-    const params = new URLSearchParams()
-    if (departmentId) params.append("departmentId", departmentId)
-    return fetchWithAuth(`/reports/medications${params.toString() ? `?${params.toString()}` : ""}`)
+    getMedications: async (departmentId?: string) => {
+      const params = new URLSearchParams()
+      if (departmentId) params.append("departmentId", departmentId)
+      return fetchWithAuth(`/reports/medications${params.toString() ? `?${params.toString()}` : ""}`)
+    },
+
+    getRemissions: async (queryString: string = "") =>
+      fetchWithAuth(`/reports/remissions${queryString ? `?${queryString}` : ""}`),
+
+    getPatients: async (departmentId?: string) => {
+      const params = new URLSearchParams()
+      if (departmentId) params.append("departmentId", departmentId)
+      return fetchWithAuth(`/reports/patients${params.toString() ? `?${params.toString()}` : ""}`)
+    },
+
+    getPersonnel: async (departmentId?: string) => {
+      const params = new URLSearchParams()
+      if (departmentId) params.append("departmentId", departmentId)
+      return fetchWithAuth(`/reports/personnel${params.toString() ? `?${params.toString()}` : ""}`)
+    },
+
+    getDepartmentsSummary: async () =>
+      fetchWithAuth("/reports/departments-summary"),
   },
-
-  getRemissions: async (queryString: string = "") =>
-    fetchWithAuth(`/reports/remissions${queryString ? `?${queryString}` : ""}`),
-
-  getPatients: async (departmentId?: string) => {
-    const params = new URLSearchParams()
-    if (departmentId) params.append("departmentId", departmentId)
-    return fetchWithAuth(`/reports/patients${params.toString() ? `?${params.toString()}` : ""}`)
-  },
-
-  getPersonnel: async (departmentId?: string) => {
-    const params = new URLSearchParams()
-    if (departmentId) params.append("departmentId", departmentId)
-    return fetchWithAuth(`/reports/personnel${params.toString() ? `?${params.toString()}` : ""}`)
-  },
-
-  getDepartmentsSummary: async () =>
-    fetchWithAuth("/reports/departments-summary"),
-},
   // ---------- REMISSIONS ----------
   remissions: {
     getAll: async () => fetchWithAuth("/remissions"),
@@ -354,96 +389,96 @@ export const api = {
       }),
 
     createConsultation: async (remissionId: string, data: any) =>
-      fetchWithAuth(`/ remissions / ${ remissionId }/consultations`, {
-method: "POST",
-  body: JSON.stringify(data),
+      fetchWithAuth(`/ remissions / ${remissionId}/consultations`, {
+        method: "POST",
+        body: JSON.stringify(data),
       }),
 
-delete: async (id: string) =>
-  fetchWithAuth(`/remissions/${id}`, { method: "DELETE" }),
+    delete: async (id: string) =>
+      fetchWithAuth(`/remissions/${id}`, { method: "DELETE" }),
   },
 
-// ---------- MEDICATIONS------
+  // ---------- MEDICATIONS------
 
-// ---------- Medication Deliveries -----------
-medicationDeliveries: {
-  create: async (data: { departmentId: string; items: any[] }) =>
-    fetchWithAuth("/medication-deliveries", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+  // ---------- Medication Deliveries -----------
+  medicationDeliveries: {
+    create: async (data: { departmentId: string; items: any[] }) =>
+      fetchWithAuth("/medication-deliveries", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
 
     getAll: async () => fetchWithAuth("/medication-deliveries"),
 
-      getById: async (id: string) => fetchWithAuth(`/medication-deliveries/${id}`),
+    getById: async (id: string) => fetchWithAuth(`/medication-deliveries/${id}`),
 
-        getByDepartment: async (departmentId: string) =>
-          fetchWithAuth(`/medication-deliveries/department/${departmentId}`),
+    getByDepartment: async (departmentId: string) =>
+      fetchWithAuth(`/medication-deliveries/department/${departmentId}`),
 
-          updateStatus: async (id: string, status: "pending" | "delivered" | "canceled", comment?: string) =>
-            fetchWithAuth(`/medication-deliveries/${id}/status`, {
-              method: "PATCH",
-              body: JSON.stringify({ status, comment }),
-            }),
+    updateStatus: async (id: string, status: "pending" | "delivered" | "canceled", comment?: string) =>
+      fetchWithAuth(`/medication-deliveries/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status, comment }),
+      }),
   },
-// ---------- Medication Delivery Items -----------
-medicationDeliveryItems: {
-  getAll: async () => fetchWithAuth("/medication-delivery-items"),
+  // ---------- Medication Delivery Items -----------
+  medicationDeliveryItems: {
+    getAll: async () => fetchWithAuth("/medication-delivery-items"),
 
     findByDelivery: async (deliveryId: string) =>
       fetchWithAuth(`/medication-delivery-items/delivery/${deliveryId}`),
 
-      create: async (deliveryId: string, medicationId: string, quantity: number) =>
-        fetchWithAuth("/medication-delivery-items", {
-          method: "POST",
-          body: JSON.stringify({ deliveryId, medicationId, quantity }),
-        }),
+    create: async (deliveryId: string, medicationId: string, quantity: number) =>
+      fetchWithAuth("/medication-delivery-items", {
+        method: "POST",
+        body: JSON.stringify({ deliveryId, medicationId, quantity }),
+      }),
 
-        updateQuantity: async (id: string, quantity: number) =>
-          fetchWithAuth(`/medication-delivery-items/${id}`, {
-            method: "PATCH",
-            body: JSON.stringify({ quantity }),
-          }),
+    updateQuantity: async (id: string, quantity: number) =>
+      fetchWithAuth(`/medication-delivery-items/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ quantity }),
+      }),
 
-          delete: async (id: string) =>
-            fetchWithAuth(`/medication-delivery-items/${id}`, { method: "DELETE" }),
+    delete: async (id: string) =>
+      fetchWithAuth(`/medication-delivery-items/${id}`, { method: "DELETE" }),
   },
 
-// Add these methods to your api.tsx file
+  // Add these methods to your api.tsx file
 
-// ---------- MEDICATION ORDERS ----------
-medicationOrders: {
-  getAll: async () =>
-    fetchWithAuth("/medication-orders"),
+  // ---------- MEDICATION ORDERS ----------
+  medicationOrders: {
+    getAll: async () =>
+      fetchWithAuth("/medication-orders"),
 
     getById: async (id: string) =>
       fetchWithAuth(`/medication-orders/${id}`),
 
-      create: async (data: any) =>
-        fetchWithAuth("/medication-orders", {
-          method: "POST",
-          body: JSON.stringify(data),
-        }),
+    create: async (data: any) =>
+      fetchWithAuth("/medication-orders", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
 
-        respond: async (id: string, data: { accept: boolean; comment?: string }) =>
-          fetchWithAuth(`/medication-orders/respond/${id}`, {
-            method: "POST",
-            body: JSON.stringify(data),
-          }),
+    respond: async (id: string, data: { accept: boolean; comment?: string }) =>
+      fetchWithAuth(`/medication-orders/respond/${id}`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
   },
-// ---------- CLINIC HISTORIES ----------
-clinic_histories: {
-  getAll: async () => fetchWithAuth("/clinic-history"),
+  // ---------- CLINIC HISTORIES ----------
+  clinic_histories: {
+    getAll: async () => fetchWithAuth("/clinic-history"),
 
     getMyOwn: async () => fetchWithAuth(`/clinic-history/my-history/own`),
 
-      create: async (data: any) =>
-        fetchWithAuth("/clinic_histories", {
-          method: "POST",
-          body: JSON.stringify(data),
-        }),
+    create: async (data: any) =>
+      fetchWithAuth("/clinic_histories", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
 
-        getByPatient: async (patientId: string) =>
-          fetchWithAuth(`/clinic-history/by-patient/${patientId}`),
+    getByPatient: async (patientId: string) =>
+      fetchWithAuth(`/clinic-history/by-patient/${patientId}`),
   },
 }
