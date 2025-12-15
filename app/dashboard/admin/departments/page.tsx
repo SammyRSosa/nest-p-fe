@@ -411,7 +411,7 @@ function DepartmentsContent() {
                     className="flex-1 px-3 py-2 border border-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                   >
                     <option value="">Selecciona un nuevo jefe</option>
-                    {workers.map(w => (
+                    {workers.filter(w => w.role !== "head_of_department" || w.id === selectedDept.headOfDepartment?.worker?.id).map(w => (
                       <option key={w.id} value={w.id}>
                         {w.firstName} {w.lastName} ({w.role})
                       </option>
@@ -454,7 +454,7 @@ function DepartmentsContent() {
               </div>
 
               {/* Add Staff */}
-              {availableWorkers.length > 0 && (
+              {availableWorkers.filter(w => w.role !== "head_of_department").length > 0 && (
                 <div className="border-t pt-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-3">Asignar Personal</h3>
                   <div className="flex gap-2">
@@ -464,7 +464,7 @@ function DepartmentsContent() {
                       className="flex-1 px-3 py-2 border border-accent/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                     >
                       <option value="">Selecciona un trabajador</option>
-                      {availableWorkers.map(w => (
+                      {availableWorkers.filter(w => w.role !== 'head_of_department').map(w => (
                         <option key={w.id} value={w.id}>
                           {w.firstName} {w.lastName}
                         </option>
